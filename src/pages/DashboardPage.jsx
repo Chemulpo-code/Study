@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Plus, Edit, Trash, BookOpen, Book, RefreshCw } from '../components/Icons';
-import { API_BASE } from '../config';
+import { API_BASE, APP_VERSION, BUILD_TIME } from '../config';
 
 export default function DashboardPage({ token, user, displayMode, onToggleDisplayMode, onLogout, onSelectModuleStudy, onSelectModuleManage, onGoToPinyinChart, onGoToToneTrainer, onGoToMatchGame, onGoToSpeedSprint, onGoToSentenceBuilder, onGoToFillInBlank }) {
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [serverInfo, setServerInfo] = useState(null);
   
   // Состояния для HSK 1 и выбора режимов тренировки
   const [importLoading, setImportLoading] = useState(false);
@@ -69,9 +70,24 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
     }
   };
 
+  const fetchServerVersion = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/version`);
+      if (res.ok) {
+        const data = await res.json();
+        setServerInfo(data);
+      } else {
+        setServerInfo({ version: 'старая', buildHash: null });
+      }
+    } catch (err) {
+      setServerInfo({ version: 'офлайн', buildHash: null });
+    }
+  };
+
   useEffect(() => {
     fetchModules();
     fetchStats();
+    fetchServerVersion();
   }, []);
 
   // Открытие модального окна для создания нового модуля
@@ -1072,6 +1088,54 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
           </div>
         </div>
       )}
+
+      {/* Версионность сервиса */}
+      <footer style={{
+        marginTop: '60px',
+        padding: '24px 0 12px 0',
+        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px',
+        fontSize: '0.78rem',
+        color: 'var(--text-secondary)'
+      }}>
+        <div>
+          <span>📱 Клиент: <strong>v{APP_VERSION}</strong> ({BUILD_TIME})</span>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {serverInfo ? (
+            serverInfo.buildHash ? (
+              <span style={{
+                background: 'rgba(0, 255, 136, 0.1)',
+                border: '1px solid rgba(0, 255, 136, 0.25)',
+                color: 'var(--neon-green)',
+                padding: '4px 10px',
+                borderRadius: '12px',
+                fontWeight: '500'
+              }}>
+                🟢 Сервер: v{serverInfo.version} ({serverInfo.buildHash})
+              </span>
+            ) : (
+              <span style={{
+                background: 'rgba(255, 51, 102, 0.1)',
+                border: '1px solid rgba(255, 51, 102, 0.25)',
+                color: '#ff668c',
+                padding: '4px 10px',
+                borderRadius: '12px',
+                fontWeight: '500'
+              }}>
+                ⚠️ Сервер отдает старый контейнер! Пересоберите стек в Portainer.
+              </span>
+            )
+          ) : (
+            <span>Загрузка версии сервера...</span>
+          )}
+        </div>
+      </footer>
     </div>
   );
 }

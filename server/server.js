@@ -18,6 +18,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_chinese_cards_987
 app.use(cors());
 app.use(express.json());
 
+// Эндпоинт версии приложения для отслеживания деплоя в Portainer
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: '1.2.0',
+    buildHash: 'cce7663',
+    serverTime: new Date().toISOString()
+  });
+});
+
 // --- Вспомогательная функция для генерации стартовых модулей ---
 function createStarterContent(userId) {
   // 1. Модуль "Приветствия"
