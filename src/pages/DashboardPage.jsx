@@ -2,7 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, Plus, Edit, Trash, BookOpen, Book, RefreshCw } from '../components/Icons';
 import { API_BASE, APP_VERSION, BUILD_TIME } from '../config';
 
-export default function DashboardPage({ token, user, displayMode, onToggleDisplayMode, onLogout, onSelectModuleStudy, onSelectModuleManage, onGoToPinyinChart, onGoToToneTrainer, onGoToMatchGame, onGoToSpeedSprint, onGoToSentenceBuilder, onGoToFillInBlank }) {
+export default function DashboardPage({ 
+  token, user, displayMode, onToggleDisplayMode, onLogout, onSelectModuleStudy, onSelectModuleManage,
+  onGoToPinyinChart, onOpenPinyinChart,
+  onGoToToneTrainer, onOpenToneTrainer,
+  onGoToMatchGame, onOpenMatchGame,
+  onGoToSpeedSprint, onOpenSpeedSprint,
+  onGoToSentenceBuilder, onOpenSentenceBuilder,
+  onGoToFillInBlank, onOpenFillBlank
+}) {
+  const handleOpenPinyinChart = onGoToPinyinChart || onOpenPinyinChart;
+  const handleOpenToneTrainer = onGoToToneTrainer || onOpenToneTrainer;
+  const handleOpenMatchGame = onGoToMatchGame || onOpenMatchGame;
+  const handleOpenSpeedSprint = onGoToSpeedSprint || onOpenSpeedSprint;
+  const handleOpenSentenceBuilder = onGoToSentenceBuilder || onOpenSentenceBuilder;
+  const handleOpenFillBlank = onGoToFillInBlank || onOpenFillBlank;
+
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -534,7 +549,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
         }}>
           {/* Кнопка 1: Таблица пиньиня */}
           <div 
-            onClick={onGoToPinyinChart}
+            onClick={handleOpenPinyinChart}
             className="glass-panel" 
             style={{ 
               padding: '20px 24px', 
@@ -569,7 +584,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
 
           {/* Кнопка 2: Тренажер тонов */}
           <div 
-            onClick={onGoToToneTrainer}
+            onClick={handleOpenToneTrainer}
             className="glass-panel" 
             style={{ 
               padding: '20px 24px', 
@@ -604,7 +619,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
 
           {/* Кнопка 3: Игра «Найди пару» */}
           <div 
-            onClick={onGoToMatchGame}
+            onClick={handleOpenMatchGame}
             className="glass-panel" 
             style={{ 
               padding: '20px 24px', 
@@ -639,7 +654,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
 
           {/* Кнопка 4: Неоновый Спринт */}
           <div 
-            onClick={onGoToSpeedSprint}
+            onClick={handleOpenSpeedSprint}
             className="glass-panel" 
             style={{ 
               padding: '20px 24px', 
@@ -674,7 +689,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
 
           {/* Кнопка 5: Конструктор предложений */}
           <div 
-            onClick={onGoToSentenceBuilder}
+            onClick={handleOpenSentenceBuilder}
             className="glass-panel" 
             style={{ 
               padding: '20px 24px', 
@@ -709,7 +724,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
 
           {/* Кнопка 6: Шпионский пропуск */}
           <div 
-            onClick={onGoToFillInBlank}
+            onClick={handleOpenFillBlank}
             className="glass-panel" 
             style={{ 
               padding: '20px 24px', 

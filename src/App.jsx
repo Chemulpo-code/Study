@@ -191,11 +191,17 @@ export default function App() {
       onSelectModuleStudy={handleSelectModuleStudy}
       onSelectModuleManage={handleSelectModuleManage}
       onOpenPinyinChart={() => changePage('pinyin')}
+      onGoToPinyinChart={() => changePage('pinyin')}
       onOpenToneTrainer={() => changePage('tones')}
+      onGoToToneTrainer={() => changePage('tones')}
       onOpenMatchGame={() => changePage('match-game')}
+      onGoToMatchGame={() => changePage('match-game')}
       onOpenSpeedSprint={() => changePage('speed-sprint')}
+      onGoToSpeedSprint={() => changePage('speed-sprint')}
       onOpenSentenceBuilder={() => changePage('sentence-builder')}
+      onGoToSentenceBuilder={() => changePage('sentence-builder')}
       onOpenFillBlank={() => changePage('fill-blank')}
+      onGoToFillInBlank={() => changePage('fill-blank')}
     />
   );
 }
