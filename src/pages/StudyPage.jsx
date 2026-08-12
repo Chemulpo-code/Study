@@ -781,60 +781,89 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
         </>
       ) : (
         /* Экран результатов сессии */
-        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
-          <h3 className="chinese-char-sm" style={{ 
-            fontSize: '2.5rem', 
-            background: 'linear-gradient(45deg, var(--neon-cyan), var(--neon-green))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            marginBottom: '16px'
-          }}>
-            太棒了! (Отлично!)
-          </h3>
-          <p style={{ fontSize: '1.2rem', marginBottom: '32px' }}>Сессия завершена!</p>
+        (() => {
+          const totalAnswers = sessionStats.know + sessionStats.dontKnow;
+          const successRatio = totalAnswers > 0 ? sessionStats.know / totalAnswers : 0;
+          
+          let titleZh = '太棒了!';
+          let titleRu = 'Идеально!';
+          let titleGradient = 'linear-gradient(45deg, var(--neon-cyan), var(--neon-green))';
+          let subtitle = 'Потрясающий результат! Вы ответили правильно на все вопросы.';
 
-          {/* Блок статистики сессии */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-around',
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid var(--border-color)',
-            padding: '24px',
-            borderRadius: '16px',
-            marginBottom: '40px'
-          }}>
-            <div>
-              <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--neon-green)', textShadow: '0 0 10px rgba(0, 255, 136, 0.2)' }}>
-                {sessionStats.know}
-              </div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Успешно</div>
-            </div>
-            <div style={{ borderRight: '1px solid var(--border-color)' }} />
-            <div>
-              <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--neon-red)', textShadow: '0 0 10px rgba(255, 51, 102, 0.2)' }}>
-                {sessionStats.dontKnow}
-              </div>
-              <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Ошибок</div>
-            </div>
-          </div>
+          if (successRatio < 0.4) {
+            titleZh = '再接再厉!';
+            titleRu = 'Нужно повторить!';
+            titleGradient = 'linear-gradient(45deg, #ff3366, #ff9900)';
+            subtitle = 'Много ошибок. Попробуйте повторить сессию заново!';
+          } else if (successRatio < 0.7) {
+            titleZh = '加油!';
+            titleRu = 'Неплохая попытка!';
+            titleGradient = 'linear-gradient(45deg, #f39c12, var(--neon-cyan))';
+            subtitle = 'Почти получилось! Повторите слабые карточки.';
+          } else if (successRatio < 1.0) {
+            titleZh = '很好!';
+            titleRu = 'Отличный результат!';
+            titleGradient = 'linear-gradient(45deg, var(--neon-cyan), var(--neon-green))';
+            subtitle = 'Хорошая работа! Вы уверенно знаете материал.';
+          }
 
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <button 
-              onClick={restartSession}
-              className="btn-neon btn-cyan"
-              style={{ flex: 1, padding: '12px 20px', fontWeight: '600' }}
-            >
-              <RefreshCw size={16} /> Повторить сессию
-            </button>
-            <button 
-              onClick={handleBack}
-              className="btn-neon btn-secondary"
-              style={{ flex: 1, padding: '12px 20px', fontWeight: '600' }}
-            >
-              В главное меню
-            </button>
-          </div>
-        </div>
+          return (
+            <div className="glass-panel" style={{ padding: '40px 24px', textAlign: 'center', borderRadius: '24px' }}>
+              <h3 className="chinese-char-sm" style={{ 
+                fontSize: '2.4rem', 
+                background: titleGradient,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                marginBottom: '12px'
+              }}>
+                {titleZh} ({titleRu})
+              </h3>
+              <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', marginBottom: '32px' }}>{subtitle}</p>
+
+              {/* Блок статистики сессии */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-around',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--border-color)',
+                padding: '24px',
+                borderRadius: '16px',
+                marginBottom: '40px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--neon-green)', textShadow: '0 0 10px rgba(0, 255, 136, 0.2)' }}>
+                    {sessionStats.know}
+                  </div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Успешно</div>
+                </div>
+                <div style={{ borderRight: '1px solid var(--border-color)' }} />
+                <div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--neon-red)', textShadow: '0 0 10px rgba(255, 51, 102, 0.2)' }}>
+                    {sessionStats.dontKnow}
+                  </div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>Ошибок</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={restartSession}
+                  className="btn-neon btn-cyan"
+                  style={{ flex: 1, padding: '12px 20px', fontWeight: '600', minWidth: '160px' }}
+                >
+                  <RefreshCw size={16} /> Повторить сессию
+                </button>
+                <button 
+                  onClick={handleBack}
+                  className="btn-neon btn-secondary"
+                  style={{ flex: 1, padding: '12px 20px', fontWeight: '600', minWidth: '160px' }}
+                >
+                  В главное меню
+                </button>
+              </div>
+            </div>
+          );
+        })()
       )}
     </div>
   );
