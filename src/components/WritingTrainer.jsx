@@ -5,13 +5,14 @@ export default function WritingTrainer({ word }) {
   const canvasRef = useRef(null);
   const hanziContainerRef = useRef(null);
   const writerRef = useRef(null);
+  const feedbackTimerRef = useRef(null);
 
   const [selectedChar, setSelectedChar] = useState('');
   const [mode, setMode] = useState('check'); // 'check' (проверка порядка черт) | 'free' (свободная пропись)
   const [showOutline, setShowOutline] = useState(true);
   const [isDrawing, setIsDrawing] = useState(false);
   const [strokeColor, setStrokeColor] = useState('#00f2fe');
-  const [quizStatus, setQuizStatus] = useState('ready'); // 'ready' | 'success' | 'mistake'
+  const [quizStatus, setQuizStatus] = useState('ready'); // 'ready' | 'correct' | 'mistake' | 'success'
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
   // Фильтруем только иероглифы (убираем знаки препинания и пробелы)
@@ -74,10 +75,18 @@ export default function WritingTrainer({ word }) {
     setQuizStatus('ready');
     writer.quiz({
       onCorrectStroke: () => {
-        setQuizStatus('ready');
+        setQuizStatus('correct');
+        if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = setTimeout(() => {
+          setQuizStatus('ready');
+        }, 1000);
       },
       onMistake: () => {
         setQuizStatus('mistake');
+        if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = setTimeout(() => {
+          setQuizStatus('ready');
+        }, 1200);
       },
       onComplete: () => {
         setQuizStatus('success');
@@ -192,6 +201,20 @@ export default function WritingTrainer({ word }) {
     );
   }
 
+  // Расчет динамической подсветки контейнера
+  const getContainerBorderStyle = () => {
+    if (quizStatus === 'mistake') return '2px solid var(--neon-red)';
+    if (quizStatus === 'correct' || quizStatus === 'success') return '2px solid var(--neon-green)';
+    return '1px solid rgba(255,255,255,0.1)';
+  };
+
+  const getContainerGlowStyle = () => {
+    if (quizStatus === 'mistake') return '0 0 25px rgba(255, 51, 102, 0.8), inset 0 0 15px rgba(255, 51, 102, 0.15)';
+    if (quizStatus === 'correct') return '0 0 25px rgba(0, 255, 136, 0.8), inset 0 0 15px rgba(0, 255, 136, 0.15)';
+    if (quizStatus === 'success') return '0 0 35px rgba(0, 255, 136, 0.9), inset 0 0 20px rgba(0, 255, 136, 0.2)';
+    return 'none';
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
       {/* Выбор режима тренажера */}
@@ -268,9 +291,10 @@ export default function WritingTrainer({ word }) {
             background: '#0d131f',
             borderRadius: '12px',
             overflow: 'hidden',
-            border: quizStatus === 'mistake' ? '2px solid var(--neon-red)' : quizStatus === 'success' ? '2px solid var(--neon-green)' : '1px solid rgba(255,255,255,0.1)',
-            boxShadow: quizStatus === 'mistake' ? '0 0 15px rgba(255, 51, 102, 0.4)' : quizStatus === 'success' ? '0 0 15px rgba(0, 255, 136, 0.4)' : 'none',
-            transition: 'all 0.3s ease'
+            border: getContainerBorderStyle(),
+            boxShadow: getContainerGlowStyle(),
+            animation: quizStatus === 'mistake' ? 'shake 0.3s cubic-bezier(.36,.07,.19,.97) both' : 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }}>
             {/* Сетка Тяньцзигэ на фоне */}
             <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
@@ -285,11 +309,28 @@ export default function WritingTrainer({ word }) {
             <div ref={hanziContainerRef} style={{ width: '240px', height: '240px', touchAction: 'none' }} />
           </div>
 
-          {/* Сообщение об успешном написании или ошибке */}
-          <div style={{ minHeight: '24px', marginTop: '8px', fontSize: '0.82rem', fontWeight: '600' }}>
-            {quizStatus === 'success' && <span style={{ color: 'var(--neon-green)' }}>🎉 Иероглиф написан правильно!</span>}
-            {quizStatus === 'mistake' && <span style={{ color: 'var(--neon-red)' }}>⚠️ Неверный порядок или направление черты</span>}
-            {quizStatus === 'ready' && <span style={{ color: 'var(--text-secondary)' }}>Пишите черты по порядку пальцем или мышкой</span>}
+          {/* Яркая плашка статуса проверки с цветной подсветкой */}
+          <div style={{ minHeight: '36px', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {quizStatus === 'correct' && (
+              <div style={{ background: 'rgba(0, 255, 136, 0.15)', border: '1px solid rgba(0, 255, 136, 0.4)', color: '#00ff88', padding: '5px 14px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', boxShadow: '0 0 12px rgba(0, 255, 136, 0.2)' }}>
+                ✅ Верная черта!
+              </div>
+            )}
+            {quizStatus === 'mistake' && (
+              <div style={{ background: 'rgba(255, 51, 102, 0.15)', border: '1px solid rgba(255, 51, 102, 0.4)', color: '#ff3366', padding: '5px 14px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', boxShadow: '0 0 12px rgba(255, 51, 102, 0.2)' }}>
+                ❌ Неверный порядок или направление!
+              </div>
+            )}
+            {quizStatus === 'success' && (
+              <div style={{ background: 'rgba(0, 255, 136, 0.2)', border: '1px solid #00ff88', color: '#00ff88', padding: '5px 14px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', boxShadow: '0 0 15px rgba(0, 255, 136, 0.3)' }}>
+                🎉 Иероглиф полностью и правильно написан!
+              </div>
+            )}
+            {quizStatus === 'ready' && (
+              <div style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                Обведите черту пальцем или мышкой по порядку
+              </div>
+            )}
           </div>
 
           {/* Панель инструментов проверки */}
