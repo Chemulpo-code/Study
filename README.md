@@ -1,16 +1,70 @@
-# React + Vite
+# 🇨🇳 Chinese Study Web App — Интерактивная платформа изучения китайского языка
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> Современная веб-платформа для эффективного изучения китайского языка с карточками интервального повторения Лейтнера, синтезом речи диктора, тренажером каллиграфии и 4 развивающими мини-играми.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🌟 Основные возможности
 
-## React Compiler
+- 🗂 **Интервальное повторение (Метод Лейтнера)**: Автоматическая система из 5 коробок для повторения слов в зависимости от качества запоминания.
+- 🔊 **Синтез речи диктора (TTS)**: Реалистичное звучание любых иероглифов и предложений с возможностью переключения на медленный дикторский режим (🐢 0.5x).
+- ✍️ **Интерактивный тренажер письма**: HTML5 Canvas-пропись с традиционной сеткой **Тяньцзигэ (田字格)** для посимвольной обводки черт иероглифов (поддерживает мышь и тачскрины).
+- 🔤 **Глобальный режим новичка («Только Пиньинь»)**: Возможность заучивать устную речь и фразы как ребенок, сфокусировавшись на пиньине с тонами до перехода к сложным иероглифам.
+- 🔁 **Двустороннее обучение**: Переключение направления перевода карточек (`🇨🇳 Китайский ➡️ 🇷🇺 Русский` или `🇷🇺 Русский ➡️ 🇨🇳 Китайский`).
+- ⚡️ **Быстрое создание карточек**: Введите иероглифы и перевод — сервер сам автосгенерирует точный пиньинь с тонами через `pinyin-pro`.
+- 📚 **Готовый модуль HSK 1**: Импорт официального словаря HSK 1 в один клик.
+- 📈 **Визуальная аналитика**: GitHub-style календарь активности за 12 недель и полосы прогресса коробок Лейтнера.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+## 🎮 Обучающие мини-игры
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+1. 🎮 **Найди пару (Match Game)** — Сопоставление 8 иероглифов/пиньиня и переводов в сетке 4х4 на время с сохранением личного рекорда.
+2. 🚀 **Неоновый Спринт (Speed Sprint)** — Скоростной аркадный тест с убывающей полосой времени и множителями комбо (`x2`, `x3`, `x4`).
+3. 🧩 **Конструктор предложений (Sentence Builder)** — Пошаговая сборка китайских фраз из фишек с проверкой грамматического порядка слов и озвучкой.
+4. 🕵️‍♂️ **Контекстный пропуск (Fill in the Blank)** — Вставка пропущенных слов в живые примеры предложений.
+
+---
+
+## 🛠 Технологический стек
+
+* **Frontend**: React 18, Vite, Custom Neon Glassmorphic CSS Design, HTML5 Canvas.
+* **Backend**: Node.js, Express, Python 3 (`edge-tts`), `pinyin-pro`.
+* **Containerization**: Docker (Multi-stage build), Docker Compose, Portainer Git Stack deployment.
+
+---
+
+## 🚀 Локальный запуск
+
+### Требования
+* Node.js >= 18
+* Python 3 + `pip install edge-tts` (для генерации речи диктора)
+
+### 1. Запуск бэкенда (Server)
+```bash
+cd server
+npm install
+npm run dev
+```
+*Сервер запустится на `http://localhost:5005`*
+
+### 2. Запуск фронтенда (Client)
+В отдельном окне терминала из корня проекта:
+```bash
+npm install
+npm run dev
+```
+*Приложение откроется на `http://localhost:5173`*
+
+---
+
+## 🐳 Деплой на свой сервер (Portainer / Docker)
+
+Проект полностью настроен для деплоя через Portainer прямо из Git-репозитория:
+
+1. В панели Portainer перейдите в **Stacks ➔ Add Stack**.
+2. Выберите способ **Repository (Git)** и укажите URL этого репозитория.
+3. Оставьте путь к файлу по умолчанию: `docker-compose.yml`.
+4. Нажмите **Deploy the stack**.
+
+Контейнер автоматически соберет React-приложение, запустит Node.js сервер с Python и сохранит ваши данные в Docker Volumes `chinese_data` и `chinese_tts_cache`.
