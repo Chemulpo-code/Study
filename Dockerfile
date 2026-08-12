@@ -4,7 +4,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY . .
 RUN npm run build
 
@@ -17,7 +17,7 @@ RUN apk add --no-cache python3 py3-pip && \
     pip3 install --no-cache-dir edge-tts --break-system-packages
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Копируем бэкенд и собранный фронтенд
 COPY server/ ./server/
