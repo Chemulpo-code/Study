@@ -27,7 +27,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard }) 
   const loadData = async () => {
     try {
       // 1. Получаем модули для поиска нужного названия
-      const moduleRes = await fetch('${API_BASE}/api/modules', {
+      const moduleRes = await fetch(`${API_BASE}/api/modules`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const modules = await moduleRes.json();

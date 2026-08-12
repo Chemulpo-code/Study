@@ -175,7 +175,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
     }));
 
     try {
-      await fetch('${API_BASE}/api/progress', {
+      await fetch(`${API_BASE}/api/progress`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -216,7 +216,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
 
     // Отправляем результат в базу
     try {
-      await fetch('${API_BASE}/api/progress', {
+      await fetch(`${API_BASE}/api/progress`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -259,7 +259,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
     setIsDictationChecked(true);
 
     try {
-      await fetch('${API_BASE}/api/progress', {
+      await fetch(`${API_BASE}/api/progress`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

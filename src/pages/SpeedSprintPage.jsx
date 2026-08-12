@@ -22,7 +22,7 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
   useEffect(() => {
     const fetchCards = async () => {
       try {
-        const resModules = await fetch('${API_BASE}/api/modules', {
+        const resModules = await fetch(`${API_BASE}/api/modules`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const modules = await resModules.json();

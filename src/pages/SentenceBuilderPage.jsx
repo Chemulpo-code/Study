@@ -28,7 +28,7 @@ export default function SentenceBuilderPage({ token, displayMode, onBack }) {
   useEffect(() => {
     const fetchSentences = async () => {
       try {
-        const resModules = await fetch('${API_BASE}/api/modules', {
+        const resModules = await fetch(`${API_BASE}/api/modules`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const modules = await resModules.json();

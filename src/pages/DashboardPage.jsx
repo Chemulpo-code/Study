@@ -22,7 +22,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
   const handleImportHsk1 = async () => {
     setImportLoading(true);
     try {
-      const response = await fetch('${API_BASE}/api/modules/import-hsk1', {
+      const response = await fetch(`${API_BASE}/api/modules/import-hsk1`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -40,7 +40,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
   // Загрузка модулей
   const fetchModules = async () => {
     try {
-      const response = await fetch('${API_BASE}/api/modules', {
+      const response = await fetch(`${API_BASE}/api/modules`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -57,7 +57,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('${API_BASE}/api/stats', {
+      const response = await fetch(`${API_BASE}/api/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();

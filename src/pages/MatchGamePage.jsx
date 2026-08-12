@@ -21,7 +21,7 @@ export default function MatchGamePage({ token, displayMode, onBack }) {
   useEffect(() => {
     const fetchAllCards = async () => {
       try {
-        const response = await fetch('${API_BASE}/api/modules', {
+        const response = await fetch(`${API_BASE}/api/modules`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const modules = await response.json();
