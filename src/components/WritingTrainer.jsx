@@ -56,8 +56,9 @@ export default function WritingTrainer({ word }) {
         strokeColor: '#00f2fe',
         outlineColor: 'rgba(255, 255, 255, 0.12)',
         drawingColor: '#00ff88',
+        hintColor: '#ffea00', // Яркий неоново-желтый цвет для вспышки подсказки черты
         showOutline: showOutline,
-        showHintAfterMisses: 2,
+        showHintAfterMisses: 1,
         highlightOnComplete: true,
         strokeAnimationSpeed: 1.2,
         delayBetweenStrokes: 150
@@ -104,7 +105,9 @@ export default function WritingTrainer({ word }) {
 
   const handleHint = () => {
     if (writerRef.current) {
-      writerRef.current.showHint();
+      writerRef.current.showHint({
+        duration: 1500
+      });
     }
   };
 
