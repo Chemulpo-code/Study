@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash, RefreshCw } from '../components/Icons';
+import { ArrowLeft, Plus, Edit, Trash, RefreshCw, X } from '../components/Icons';
 import { API_BASE } from '../config';
 
-export default function ManageCardsPage({ token, moduleId, onBackToDashboard }) {
+export default function ManageCardsPage({ token, moduleId, onBackToDashboard, onBack }) {
+  const handleBack = onBackToDashboard || onBack;
   const [module, setModule] = useState(null);
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,18 +31,21 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard }) 
       const moduleRes = await fetch(`${API_BASE}/api/modules`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const modules = await moduleRes.json();
-      const currentModule = modules.find(m => m.id === moduleId);
-      setModule(currentModule);
+      const modulesData = await moduleRes.json();
+      const modulesList = Array.isArray(modulesData) ? modulesData : [];
+      const currentModule = modulesList.find(m => m.id === moduleId);
+      setModule(currentModule || null);
 
       // 2. Получаем карточки модуля
       const cardsRes = await fetch(`${API_BASE}/api/modules/${moduleId}/cards`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const cardsData = await cardsRes.json();
-      setCards(cardsData);
+      setCards(Array.isArray(cardsData) ? cardsData : []);
     } catch (err) {
+      console.error('Ошибка загрузки данных:', err);
       setError(err.message);
+      setCards([]);
     } finally {
       setLoading(false);
     }
@@ -139,10 +143,11 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard }) 
   };
 
   // Фильтрация карточек по поисковому запросу
-  const filteredCards = cards.filter(card => 
-    card.characters.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    card.pinyin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    card.translation.toLowerCase().includes(searchQuery.toLowerCase())
+  const safeCards = Array.isArray(cards) ? cards : [];
+  const filteredCards = safeCards.filter(card => 
+    (card.characters || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (card.pinyin || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (card.translation || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (loading) {
@@ -166,7 +171,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard }) 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button 
-            onClick={onBackToDashboard}
+            onClick={handleBack}
             className="btn-neon btn-secondary"
             style={{ padding: '8px 16px', fontSize: '0.85rem' }}
           >
