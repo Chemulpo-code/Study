@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Китайский язык — Учебные карточки</title>
     
+    <!-- Preconnect fonts for fast rendering -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
     <!-- iOS PWA App Icon & Mobile Web App meta -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="/apple-touch-icon.png" />
@@ -15,8 +19,15 @@
     <meta name="apple-mobile-web-app-title" content="Китайский" />
     <meta name="theme-color" content="#0b0f19" />
   </head>
-  <body>
+  <body style="background-color: #0b0f19;">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>

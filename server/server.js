@@ -426,10 +426,16 @@ app.get('/api/tts', (req, res) => {
   });
 });
 
-// В режиме продакшна (Docker / Portainer) отдаем собранный React клиент из папки dist
+// В режиме продакшна (Docker / Portainer) отдаем собранный React клиент из папки dist с агрессивным кэшированием
 const distPath = path.join(path.resolve(), 'dist');
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+  // Кэшируем собранные Vite JS/CSS файлы на 1 год (они с хэшем)
+  app.use('/assets', express.static(path.join(distPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true
+  }));
+  app.use(express.static(distPath, { maxAge: '1d' }));
+
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(distPath, 'index.html'));
