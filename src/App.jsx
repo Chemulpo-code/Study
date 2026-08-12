@@ -42,21 +42,19 @@ export default function App() {
         const response = await fetch(`${API_BASE}/api/auth/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const data = await response.json();
         
-        if (response.ok && data.user) {
-          setUser(data.user);
-          setCurrentPage('dashboard');
-        } else {
-          // Токен устарел или недействителен
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setUser(data.user);
+            setCurrentPage('dashboard');
+          }
+        } else if (response.status === 401 || response.status === 403) {
+          // Выходим только если бэкенд явно подтвердил, что токен просрочен
           handleLogout();
         }
       } catch (error) {
-        console.error('Ошибка проверки токена:', error);
-        // Не стираем токен при сетевой ошибке, чтобы пользователь не вылетал при обрыве связи,
-        // но перекидываем на авторизацию, если это критично.
-        // Для простоты — выходим:
-        handleLogout();
+        console.error('Ошибка сети при проверки токена:', error);
       } finally {
         setLoading(false);
       }

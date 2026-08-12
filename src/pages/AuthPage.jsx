@@ -28,10 +28,15 @@ export default function AuthPage({ onLoginSuccess }) {
         body: JSON.stringify({ username, password })
       });
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Сервер вернул неверный ответ. Откройте сайт по HTTPS (https://) и обновите стек в Portainer!');
+      }
+
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Произошла ошибка');
+        throw new Error(data.error || 'Произошла ошибка авторизации');
       }
 
       onLoginSuccess(data.token, data.user);
