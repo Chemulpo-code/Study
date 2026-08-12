@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { pinyin as getPinyin } from 'pinyin-pro';
 import { hsk1Words } from './hsk1_data.js';
 import db from './db.js';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -379,6 +379,10 @@ app.get('/api/tts', (req, res) => {
     return res.status(400).json({ error: 'Параметр text обязателен.' });
   }
 
+  if (text.length > 500) {
+    return res.status(400).json({ error: 'Текст слишком длинный (максимум 500 символов).' });
+  }
+
   const isSlow = req.query.rate === 'slow';
   const speedSuffix = isSlow ? '_slow' : '';
 
@@ -392,17 +396,15 @@ app.get('/api/tts', (req, res) => {
     return fs.createReadStream(cachedFilePath).pipe(res);
   }
 
-  // Вызываем наш Python скрипт tts_runner.py с форсированным IPv4
-  const runnerPath = path.join(process.cwd(), 'tts_runner.py');
+  // Безопасный вызов Python скрипта tts_runner.py через execFile (без командной оболочки, 100% защита от Command Injection)
+  const runnerPath = path.join(process.cwd(), 'server', 'tts_runner.py');
+  const fallbackRunnerPath = path.join(process.cwd(), 'tts_runner.py');
+  const actualRunnerPath = fs.existsSync(runnerPath) ? runnerPath : fallbackRunnerPath;
+  
   const voice = 'zh-CN-XiaoxiaoNeural';
-  
-  // Экранируем текст для безопасного использования в терминале
-  const sanitizedText = text.replace(/"/g, '\\"');
-  
-  const rateParam = isSlow ? '"-35%"' : '"+0%"';
-  const cmd = `python3 "${runnerPath}" "${voice}" "${sanitizedText}" "${cachedFilePath}" ${rateParam}`;
+  const rateParam = isSlow ? '-35%' : '+0%';
 
-  exec(cmd, (error, stdout, stderr) => {
+  execFile('python3', [actualRunnerPath, voice, text, cachedFilePath, rateParam], (error, stdout, stderr) => {
     if (error) {
       console.error('Ошибка edge-tts:', error, stderr);
       return res.status(500).json({ error: 'Не удалось сгенерировать аудио.', details: stderr });
