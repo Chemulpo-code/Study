@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  chinese-study:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chinese-study-app
+    restart: always
+    ports:
+      - "5005:5005"
+    environment:
+      - NODE_ENV=production
+      - PORT=5005
+      - JWT_SECRET=super_secret_custom_chinese_key_change_me
+    volumes:
+      - chinese_data:/app/server/data
+      - chinese_tts_cache:/app/server/tts_cache
+
+volumes:
+  chinese_data:
+  chinese_tts_cache:
