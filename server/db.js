@@ -5,7 +5,12 @@ import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DB_FILE = path.join(__dirname, 'db.json');
+const DB_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+if (!fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+const DB_FILE = path.join(DB_DIR, 'db.json');
+const LEGACY_DB_FILE = path.join(__dirname, 'db.json');
 
 // Глобальный кэш данных в оперативной памяти
 let dataCache = {
@@ -18,6 +23,13 @@ let dataCache = {
 // Загрузка базы данных при запуске
 function initDb() {
   try {
+    // Автоматический перенос старой базы в персистентный Docker Volume
+    if (!fs.existsSync(DB_FILE) && fs.existsSync(LEGACY_DB_FILE)) {
+      try {
+        fs.copyFileSync(LEGACY_DB_FILE, DB_FILE);
+      } catch (e) {}
+    }
+
     if (fs.existsSync(DB_FILE)) {
       const fileData = fs.readFileSync(DB_FILE, 'utf8');
       dataCache = JSON.parse(fileData);
