@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Lock, User } from '../components/Icons';
+import { Lock, User, Eye, EyeOff } from '../components/Icons';
 import { API_BASE } from '../config';
 
 export default function AuthPage({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -172,14 +173,36 @@ export default function AuthPage({ onLoginSuccess }) {
               <Lock size={18} />
             </span>
             <input 
-              type="password" 
+              type={showPassword ? 'text' : 'password'} 
               placeholder="Пароль"
               className="input-glass"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
-              style={{ paddingLeft: '44px' }}
+              style={{ paddingLeft: '44px', paddingRight: '44px' }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '14px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                color: showPassword ? 'var(--neon-cyan)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                transition: 'color 0.2s ease'
+              }}
+              title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
 
           {/* Кнопка отправки */}
