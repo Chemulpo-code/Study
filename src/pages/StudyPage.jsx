@@ -436,77 +436,80 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
               <div className={`flip-card ${isFlipped ? 'flipped' : ''}`} onClick={handleCardFlip}>
                 <div className="flip-card-inner">
                   {/* Лицевая сторона */}
-                  <div className="flip-card-front">
-                    {cardDirection === 'zh-to-ru' ? (
-                      <>
-                        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--neon-cyan)', letterSpacing: '2px', marginBottom: '24px' }}>
-                          {displayMode === 'pinyin' ? 'Транскрипция (Пиньинь)' : 'Китайский язык'}
+                  <div className="flip-card-front" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: '16px' }}>
+                      {cardDirection === 'zh-to-ru' ? (
+                        <>
+                          <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--neon-cyan)', letterSpacing: '3px', fontWeight: '600' }}>
+                            {displayMode === 'pinyin' ? 'Транскрипция (Пиньинь)' : 'Китайский язык'}
+                          </span>
+                          {/* Контейнер для центрирования иероглифа/пиньиня и кнопки озвучки */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', margin: '8px 0' }}>
+                            {displayMode === 'pinyin' ? (
+                              <span style={{ fontSize: '3.4rem', fontWeight: '700', color: 'var(--neon-cyan)', textShadow: '0 0 20px rgba(0, 242, 254, 0.4)', letterSpacing: '1px' }}>
+                                {currentCard.pinyin}
+                              </span>
+                            ) : (
+                              <span className="chinese-char" style={{ fontSize: '4.2rem' }}>{currentCard.characters}</span>
+                            )}
+                            <AudioPlayer text={currentCard.characters} style={{ width: '48px', height: '48px' }} />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--neon-cyan)', letterSpacing: '3px', fontWeight: '600' }}>
+                            Перевод на русский
+                          </span>
+                          <div style={{ fontSize: '2.4rem', fontWeight: '700', color: '#fff', textAlign: 'center', padding: '0 20px', lineHeight: '1.3' }}>
+                            {currentCard.translation}
+                          </div>
+                        </>
+                      )}
+                      {Boolean(currentCard?.box && currentCard.box > 0) && (
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                          📦 Коробка Лейтнера: {currentCard.box}
                         </span>
-                        {/* Контейнер для центрирования иероглифа/пиньиня и кнопки озвучки без наложения */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '16px' }}>
-                          {displayMode === 'pinyin' ? (
-                            <span style={{ fontSize: '2.2rem', fontWeight: '700', color: 'var(--neon-cyan)', textShadow: '0 0 12px rgba(0, 242, 254, 0.4)' }}>
-                              {currentCard.pinyin}
-                            </span>
-                          ) : (
-                            <span className="chinese-char">{currentCard.characters}</span>
-                          )}
-                          <AudioPlayer text={currentCard.characters} />
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--neon-cyan)', letterSpacing: '2px', marginBottom: '24px' }}>
-                          Перевод на русский
-                        </span>
-                        <div style={{ fontSize: '1.8rem', fontWeight: '600', color: '#fff', textAlign: 'center', padding: '0 20px', lineHeight: '1.4' }}>
-                          {currentCard.translation}
-                        </div>
-                      </>
-                    )}
-                    {Boolean(currentCard?.box && currentCard.box > 0) && (
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '20px' }}>
-                        📦 Коробка Лейтнера: {currentCard.box}
-                      </span>
-                    )}
+                      )}
+                    </div>
+
                     <span style={{ 
-                      marginTop: 'auto', 
                       fontSize: '0.85rem', 
                       color: 'var(--text-secondary)',
                       background: 'rgba(255, 255, 255, 0.03)',
-                      padding: '8px 16px',
+                      padding: '8px 20px',
                       borderRadius: '30px',
-                      border: '1px solid var(--border-color)'
+                      border: '1px solid var(--border-color)',
+                      marginTop: '12px'
                     }}>
                       Нажмите для перевода
                     </span>
                   </div>
 
                   {/* Обратная сторона */}
-                  <div className="flip-card-back" style={{ justifyContent: 'space-between', padding: '30px 24px' }}>
-                    <div style={{ width: '100%', textAlign: 'center' }}>
-                      <div className="chinese-char-sm" style={{ color: '#fff', fontSize: '2.2rem', marginBottom: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                  <div className="flip-card-back" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: '12px' }}>
+                      <div className="chinese-char-sm" style={{ color: '#fff', fontSize: '3.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
                         {currentCard.characters}
-                        <AudioPlayer text={currentCard.characters} />
+                        <AudioPlayer text={currentCard.characters} style={{ width: '44px', height: '44px' }} />
                       </div>
                       <div style={{
-                        fontSize: '1.2rem',
+                        fontSize: '1.6rem',
                         color: 'var(--neon-cyan)',
-                        fontWeight: '600',
-                        letterSpacing: '0.5px',
-                        marginBottom: '16px',
-                        textShadow: '0 0 10px rgba(0, 242, 254, 0.2)'
+                        fontWeight: '700',
+                        letterSpacing: '1px',
+                        textShadow: '0 0 12px rgba(0, 242, 254, 0.3)'
                       }}>
                         {currentCard.pinyin}
                       </div>
                       <div style={{ 
-                        fontSize: '1.3rem', 
-                        fontWeight: '500', 
+                        fontSize: '1.6rem', 
+                        fontWeight: '600', 
                         color: '#fff',
                         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                         paddingTop: '16px',
                         maxWidth: '90%',
-                        margin: '0 auto 20px auto'
+                        margin: '8px auto 0 auto',
+                        textAlign: 'center'
                       }}>
                         {currentCard.translation}
                       </div>
@@ -522,23 +525,24 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                         padding: '16px',
                         textAlign: 'left',
                         maxHeight: '130px',
-                        overflowY: 'auto'
+                        overflowY: 'auto',
+                        marginBottom: '8px'
                       }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                           <span>Пример использования:</span>
                           <AudioPlayer text={currentCard.examples[0].chinese} />
                         </span>
                         {currentCard.examples.map((ex, idx) => (
-                          <div key={idx} style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>
-                            <div style={{ fontFamily: 'Noto Sans SC', color: '#fff', fontSize: '1rem', fontWeight: '500' }}>{ex.chinese}</div>
-                            <div style={{ color: 'var(--neon-cyan)', fontSize: '0.8rem' }}>{ex.pinyin}</div>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{ex.translation}</div>
+                          <div key={idx} style={{ fontSize: '0.95rem', lineHeight: '1.4' }}>
+                            <div style={{ fontFamily: 'Noto Sans SC', color: '#fff', fontSize: '1.1rem', fontWeight: '500' }}>{ex.chinese}</div>
+                            <div style={{ color: 'var(--neon-cyan)', fontSize: '0.85rem' }}>{ex.pinyin}</div>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{ex.translation}</div>
                           </div>
                         ))}
                       </div>
                     )}
                     
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       Кликните, чтобы скрыть ответ
                     </span>
                   </div>
