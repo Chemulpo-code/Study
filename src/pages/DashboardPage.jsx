@@ -211,16 +211,18 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
     }
     
     return (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(12, 12px)',
-        gridTemplateRows: 'repeat(7, 12px)',
-        gridAutoFlow: 'column',
-        gap: '4px',
-        justifyContent: 'center',
-        padding: '10px 0'
-      }}>
-        {cells}
+      <div className="mobile-scroll-x" style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(12, 12px)',
+          gridTemplateRows: 'repeat(7, 12px)',
+          gridAutoFlow: 'column',
+          gap: '4px',
+          justifyContent: 'center',
+          padding: '10px 0'
+        }}>
+          {cells}
+        </div>
       </div>
     );
   };
@@ -292,15 +294,8 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
       {/* Шапка дашборда */}
-      <header className="glass-panel" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '20px 30px',
-        marginBottom: '40px',
-        borderRadius: '16px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <header className="glass-panel dashboard-header">
+        <div className="dashboard-user-info">
           <div>
             <h2 style={{ fontSize: '1.4rem', fontWeight: '600' }}>
               Привет, <span style={{ color: 'var(--neon-cyan)', textShadow: '0 0 10px rgba(0, 242, 254, 0.2)' }}>{user.username}</span>!
@@ -320,14 +315,15 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
             gap: '6px',
             color: '#ff6600',
             fontWeight: '600',
-            fontSize: '0.9rem',
+            fontSize: '0.85rem',
             boxShadow: '0 0 10px rgba(255, 102, 0, 0.1)'
           }} title="Серия дней ежедневных занятий">
             <span>🔥</span>
             <span>{user.streak || 0} дней подряд</span>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        
+        <div className="dashboard-actions">
           <button
             onClick={() => onToggleDisplayMode(displayMode === 'hanzi' ? 'pinyin' : 'hanzi')}
             className="btn-neon btn-secondary"
@@ -345,7 +341,7 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
             title="Переключить режим между Иероглифами и Пиньинем для новичков"
           >
             <span>🔤</span>
-            <span>{displayMode === 'pinyin' ? 'Режим: Только Пиньинь' : 'Режим: Иероглифы'}</span>
+            <span>{displayMode === 'pinyin' ? 'Режим: Пиньинь' : 'Режим: Иероглифы'}</span>
           </button>
 
           <button 

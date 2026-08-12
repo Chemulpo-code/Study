@@ -178,7 +178,7 @@ export default function WritingTrainer({ word }) {
           onTouchStart={startDrawing}
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
-          style={{ cursor: 'crosshair', display: 'block' }}
+          style={{ cursor: 'crosshair', display: 'block', touchAction: 'none' }}
         />
       </div>
 
