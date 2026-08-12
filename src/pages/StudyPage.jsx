@@ -64,22 +64,37 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
 
   // Загрузка карточек
   const fetchCards = async () => {
+    if (!moduleId) {
+      setError('Идентификатор модуля не указан.');
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 сек таймаут
+
     try {
+      setLoading(true);
+      setError('');
+
       const response = await fetch(`${API_BASE}/api/modules/${moduleId}/cards`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при загрузке карточек');
       
-      setAllOriginalCards(data);
+      const cardList = Array.isArray(data) ? data : [];
+      setAllOriginalCards(cardList);
 
-      let processedCards = [...data];
+      let processedCards = [...cardList];
 
       // Если включен режим интервальных повторений, фильтруем карточки
       if (isSpaced) {
         const now = new Date();
-        processedCards = data.filter(card => {
-          // Если карточка новая (nextReviewAt === null) или дата повторения наступила/прошла
+        processedCards = cardList.filter(card => {
           if (!card.nextReviewAt) return true;
           const reviewDate = new Date(card.nextReviewAt);
           return reviewDate <= now;
@@ -90,7 +105,12 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
       const shuffled = processedCards.sort(() => Math.random() - 0.5);
       setCards(shuffled);
     } catch (err) {
-      setError(err.message);
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        setError('Превышено время ожидания ответа от сервера (6 сек). Проверьте интернет-соединение.');
+      } else {
+        setError(err.message || 'Ошибка подключения к серверу');
+      }
     } finally {
       setLoading(false);
     }
@@ -308,8 +328,16 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifycontent: 'center', minHeight: '80vh' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Загрузка карточек для изучения...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', gap: '16px' }}>
+        <div style={{ fontSize: '2rem' }}>🔄</div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>Загрузка карточек для изучения...</p>
+        <button 
+          onClick={handleBack} 
+          className="btn-neon btn-secondary" 
+          style={{ padding: '8px 20px', fontSize: '0.85rem', marginTop: '12px' }}
+        >
+          <ArrowLeft size={16} /> Вернуться в меню
+        </button>
       </div>
     );
   }
