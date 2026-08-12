@@ -32,7 +32,8 @@ export default function AudioPlayer({ text, className = '' }) {
         setIsSlowNext(!isSlowNext);
       })
       .catch(err => {
-        console.warn('Ошибка воспроизведения Microsoft Edge TTS, пробуем локальный фолбек:', err);
+        if (err.name === 'AbortError') return; // Игнорируем прерывание звука пользователем
+        console.warn('Ошибка воспроизведения MP3, пробуем фолбек Web Speech API:', err);
         
         // Локальный фолбек на Web Speech API на случай отсутствия интернета
         if ('speechSynthesis' in window) {
