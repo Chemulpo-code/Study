@@ -11,10 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+*.mp3
 
-# Server data and audio cache
+# Server data, db file, and audio cache
 server/data/
 server/tts_cache/
+server/db.json
 
 # Editor directories and files
 .vscode/*
