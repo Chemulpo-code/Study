@@ -1,58 +1,46 @@
-// High-performance PWA Service Worker for instant offline/cache launch on iOS & Android
-const CACHE_NAME = 'chinese-study-v1';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/apple-touch-icon.png'
-];
+// High-performance PWA Service Worker with Network-First strategy to guarantee instant code updates
+const CACHE_NAME = 'chinese-study-v3';
 
-// Установка воркера и кэширование базовых ресурсов
+// Установка воркера и немедленная активация
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
-  );
+  self.skipWaiting();
 });
 
-// Активация и очистка старых кэшей
+// Активация и полная очистка ВСЕХ старых кэшей
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.map((key) => caches.delete(key))
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Стратегия: Stale-While-Revalidate / Cache First для мгновенного запуска за < 50мс
+// Стратегия: Network First для HTML/JS/CSS (всегда свежий код сервера!), с фолбеком на кэш только при отсутствии сети
 self.addEventListener('fetch', (event) => {
   // Не кэшируем динамические запросы к API
   if (event.request.url.includes('/api/')) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Фоновое обновление кэша для свежих сборников
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
-        return cachedResponse;
-      }
+  // Только GET запросы
+  if (event.request.method !== 'GET') {
+    return;
+  }
 
-      return fetch(event.request).then((networkResponse) => {
+  event.respondWith(
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
         return networkResponse;
-      });
-    })
+      })
+      .catch(() => {
+        // Если интернет недоступен, берем из кэша
+        return caches.match(event.request);
+      })
   );
 });

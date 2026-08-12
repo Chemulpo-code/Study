@@ -464,7 +464,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                         </div>
                       </>
                     )}
-                    {currentCard.box && currentCard.box > 0 && (
+                    {Boolean(currentCard?.box && currentCard.box > 0) && (
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '20px' }}>
                         📦 Коробка Лейтнера: {currentCard.box}
                       </span>
