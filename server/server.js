@@ -366,6 +366,12 @@ app.post('/api/modules/:moduleId/reset-progress', authenticateToken, (req, res) 
   res.json({ message: 'Прогресс модуля сброшен.' });
 });
 
+// Глобальный сброс всего учебного прогресса текущего пользователя
+app.post('/api/progress/reset-all', authenticateToken, (req, res) => {
+  db.resetAllUserProgress(req.user.id);
+  res.json({ message: 'Весь учебный прогресс успешно сброшен.' });
+});
+
 // Папка для кэширования аудио-файлов
 const cacheDir = path.join(process.cwd(), 'tts_cache');
 if (!fs.existsSync(cacheDir)) {

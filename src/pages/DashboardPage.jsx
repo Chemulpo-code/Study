@@ -161,6 +161,23 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
     }
   };
 
+  const handleResetAllProgress = async () => {
+    if (!window.confirm('Вы уверены, что хотите сбросить ВСЕ свои коробки Лейтнера и статистику изучения по всем модулям? Все ваши слова сохранятся, но прогресс обнулится.')) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/progress/reset-all`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Ошибка при сбросе прогресса');
+      fetchModules();
+      fetchStats();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const renderActivityCalendar = () => {
     const cells = [];
     const today = new Date();
@@ -342,6 +359,26 @@ export default function DashboardPage({ token, user, displayMode, onToggleDispla
           >
             <span>🔤</span>
             <span>{displayMode === 'pinyin' ? 'Режим: Пиньинь' : 'Режим: Иероглифы'}</span>
+          </button>
+
+          <button
+            onClick={handleResetAllProgress}
+            className="btn-neon btn-secondary"
+            style={{
+              padding: '8px 14px',
+              borderRadius: '12px',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: '600',
+              border: '1px solid rgba(255,102,0,0.3)',
+              color: '#ff9900'
+            }}
+            title="Сбросить статус изучения и коробки Лейтнера по всем модулям"
+          >
+            <RefreshCw size={14} />
+            <span>Сбросить прогресс</span>
           </button>
 
           <button 

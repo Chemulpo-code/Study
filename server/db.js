@@ -310,6 +310,13 @@ const db = {
     return true;
   },
 
+  // Глобальный сброс всего прогресса пользователя
+  resetAllUserProgress(userId) {
+    dataCache.progress = dataCache.progress.filter(p => p.userId !== userId);
+    saveDb();
+    return true;
+  },
+
   getUserStats(userId) {
     const progressList = dataCache.progress.filter(p => p.userId === userId);
     const boxCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
