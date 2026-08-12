@@ -4,8 +4,10 @@ import AudioPlayer from '../components/AudioPlayer';
 import WritingTrainer from '../components/WritingTrainer';
 import { API_BASE } from '../config';
 
-export default function StudyPage({ token, moduleId, mode, spaced, displayMode, onToggleDisplayMode, onBackToDashboard, onBack }) {
+export default function StudyPage({ token, moduleId, mode, initialMode, spaced, initialSpaced, displayMode, onToggleDisplayMode, onBackToDashboard, onBack }) {
   const handleBack = onBackToDashboard || onBack;
+  const currentMode = mode || initialMode || 'cards';
+  const isSpaced = spaced !== undefined ? spaced : (initialSpaced !== undefined ? initialSpaced : false);
   const [cards, setCards] = useState([]);
   const [allOriginalCards, setAllOriginalCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
       let processedCards = [...data];
 
       // Если включен режим интервальных повторений, фильтруем карточки
-      if (spaced) {
+      if (isSpaced) {
         const now = new Date();
         processedCards = data.filter(card => {
           // Если карточка новая (nextReviewAt === null) или дата повторения наступила/прошла
@@ -96,7 +98,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
 
   useEffect(() => {
     fetchCards();
-  }, [moduleId, spaced]);
+  }, [moduleId, isSpaced]);
 
   // Фоновый предзапуск генерации качественной озвучки Microsoft Edge Neural TTS (нормальная и медленная скорости)
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
 
   // Генерация вариантов ответов для викторины (вызывается при смене индекса карточки в режиме 'quiz')
   useEffect(() => {
-    if (cards.length > 0 && currentIndex < cards.length && mode === 'quiz') {
+    if (cards.length > 0 && currentIndex < cards.length && currentMode === 'quiz') {
       const correctText = cards[currentIndex].translation;
       const options = new Set([correctText]);
       
@@ -144,11 +146,11 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
         triggerAutoplaySound(cards[currentIndex].characters);
       }, 300);
     }
-  }, [cards, currentIndex, mode, allOriginalCards]);
+  }, [cards, currentIndex, currentMode, allOriginalCards]);
 
   // Автозвук в режиме Диктанта при смене слова
   useEffect(() => {
-    if (cards.length > 0 && currentIndex < cards.length && mode === 'dictation') {
+    if (cards.length > 0 && currentIndex < cards.length && currentMode === 'dictation') {
       setDictationInput('');
       setIsDictationChecked(false);
       setIsDictationCorrect(false);
@@ -157,10 +159,10 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
         triggerAutoplaySound(cards[currentIndex].characters);
       }, 300);
     }
-  }, [cards, currentIndex, mode]);
+  }, [cards, currentIndex, currentMode]);
 
   const handleCardFlip = () => {
-    if (mode === 'cards') {
+    if (currentMode === 'cards') {
       setIsFlipped(!isFlipped);
     }
   };
@@ -382,9 +384,9 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
           padding: '4px 12px',
           color: 'var(--neon-cyan)'
         }}>
-          {mode === 'cards' && (spaced ? '⏰ Интервальные карточки' : '🗂️ Карточки (Все)')}
-          {mode === 'quiz' && '🎯 Викторина'}
-          {mode === 'dictation' && '✍️ Диктант'}
+          {currentMode === 'cards' && (isSpaced ? '⏰ Интервальные карточки' : '🗂️ Карточки (Все)')}
+          {currentMode === 'quiz' && '🎯 Викторина'}
+          {currentMode === 'dictation' && '✍️ Диктант'}
         </span>
 
         <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
@@ -406,7 +408,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
           </div>
 
           {/* 1. РЕЖИМ КАРТОЧЕК */}
-          {mode === 'cards' && (
+          {currentMode === 'cards' && (
             <>
               {/* Переключатель направления перевода */}
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
@@ -590,7 +592,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
           )}
 
           {/* 2. РЕЖИМ ВИКТОРИНЫ (QUIZ) */}
-          {mode === 'quiz' && (
+          {currentMode === 'quiz' && (
             <div className="glass-panel" style={{ padding: '36px 30px', borderRadius: '24px', minHeight: '380px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                 <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '1px', display: 'block', marginBottom: '16px' }}>
@@ -654,7 +656,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
           )}
 
           {/* 3. РЕЖИМ ДИКТАНТА (DICTATION) */}
-          {mode === 'dictation' && (
+          {currentMode === 'dictation' && (
             <div className="glass-panel" style={{ padding: '36px 30px', borderRadius: '24px', minHeight: '380px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                 <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '1px', display: 'block', marginBottom: '16px' }}>

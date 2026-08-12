@@ -135,7 +135,9 @@ export default function App() {
       <StudyPage 
         token={token} 
         moduleId={activeModuleId} 
+        mode={studyMode}
         initialMode={studyMode}
+        spaced={spacedRepetition}
         initialSpaced={spacedRepetition}
         displayMode={displayMode}
         onBack={handleBackToDashboard}
