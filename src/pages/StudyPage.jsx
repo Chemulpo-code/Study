@@ -4,7 +4,8 @@ import AudioPlayer from '../components/AudioPlayer';
 import WritingTrainer from '../components/WritingTrainer';
 import { API_BASE } from '../config';
 
-export default function StudyPage({ token, moduleId, mode, spaced, displayMode, onToggleDisplayMode, onBackToDashboard }) {
+export default function StudyPage({ token, moduleId, mode, spaced, displayMode, onToggleDisplayMode, onBackToDashboard, onBack }) {
+  const handleBack = onBackToDashboard || onBack;
   const [cards, setCards] = useState([]);
   const [allOriginalCards, setAllOriginalCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -323,7 +324,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
           textAlign: 'center'
         }}>
           <p>{error}</p>
-          <button onClick={onBackToDashboard} className="btn-neon btn-secondary" style={{ marginTop: '16px', padding: '8px 16px' }}>
+          <button onClick={handleBack} className="btn-neon btn-secondary" style={{ marginTop: '16px', padding: '8px 16px' }}>
             Вернуться назад
           </button>
         </div>
@@ -344,7 +345,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
               ? 'На сегодня у вас нет карточек к повторению в этом модуле. Отличная работа! Вы можете продолжить в режиме просмотра всех карточек подряд или пройти тест/диктант.' 
               : 'В этом модуле отсутствуют карточки. Добавьте новые слова в настройках модуля.'}
           </p>
-          <button onClick={onBackToDashboard} className="btn-neon btn-cyan" style={{ padding: '10px 20px' }}>
+          <button onClick={handleBack} className="btn-neon btn-cyan" style={{ padding: '10px 20px' }}>
             <ArrowLeft size={16} /> На главную
           </button>
         </div>
@@ -365,7 +366,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
         marginBottom: '32px'
       }}>
         <button 
-          onClick={onBackToDashboard}
+          onClick={handleBack}
           className="btn-neon btn-secondary"
           style={{ padding: '8px 16px', fontSize: '0.85rem' }}
         >
@@ -792,7 +793,7 @@ export default function StudyPage({ token, moduleId, mode, spaced, displayMode, 
               <RefreshCw size={16} /> Повторить сессию
             </button>
             <button 
-              onClick={onBackToDashboard}
+              onClick={handleBack}
               className="btn-neon btn-secondary"
               style={{ flex: 1, padding: '12px 20px', fontWeight: '600' }}
             >

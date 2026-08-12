@@ -138,7 +138,8 @@ export default function App() {
         initialMode={studyMode}
         initialSpaced={spacedRepetition}
         displayMode={displayMode}
-        onBack={handleBackToDashboard} 
+        onBack={handleBackToDashboard}
+        onBackToDashboard={handleBackToDashboard} 
       />
     );
   }
@@ -149,6 +150,7 @@ export default function App() {
         token={token} 
         moduleId={activeModuleId} 
         onBack={handleBackToDashboard} 
+        onBackToDashboard={handleBackToDashboard}
       />
     );
   }
