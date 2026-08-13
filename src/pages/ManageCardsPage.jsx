@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Edit, Trash, RefreshCw, X } from '../components/Icons';
 import { API_BASE } from '../config';
+import { useToast } from '../components/Toast';
 
 export default function ManageCardsPage({ token, moduleId, onBackToDashboard, onBack }) {
+  const { showToast } = useToast();
   const handleBack = onBackToDashboard || onBack;
   const [module, setModule] = useState(null);
   const [cards, setCards] = useState([]);
@@ -28,7 +30,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
 
   const handleFetchTatoebaExample = async () => {
     if (!characters.trim()) {
-      alert('Сначала введите иероглифы!');
+      showToast('Сначала введите иероглифы!', 'warning');
       return;
     }
 
@@ -57,9 +59,10 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
         if (data.example.chinese && !usedTatoebaSentences.includes(data.example.chinese)) {
           setUsedTatoebaSentences(prev => [...prev, data.example.chinese]);
         }
+        showToast('Пример из Tatoeba успешно подтянут!', 'success');
       }
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'warning');
     } finally {
       setIsTatoebaLoading(false);
     }
@@ -161,9 +164,10 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       if (!response.ok) throw new Error(data.error || 'Ошибка при сохранении карточки');
 
       setIsFormOpen(false);
+      showToast('Карточка успешно сохранена!', 'success');
       loadData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     } finally {
       setFormLoading(false);
     }
@@ -179,9 +183,10 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при удалении');
+      showToast('Карточка удалена', 'info');
       loadData();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     }
   };
 

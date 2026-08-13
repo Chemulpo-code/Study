@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.3.2',
-    buildHash: 'v1.3.2-smart-relevance',
+    version: '1.4.0',
+    buildHash: 'v1.4.0-inapp-toast',
     serverTime: new Date().toISOString()
   });
 });

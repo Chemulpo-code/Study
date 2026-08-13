@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Plus, Edit, Trash, BookOpen, Book, RefreshCw } from '../components/Icons';
 import { API_BASE, APP_VERSION, BUILD_TIME } from '../config';
+import { useToast } from '../components/Toast';
 
 export default function DashboardPage({ 
   token, user, displayMode, onToggleDisplayMode, onLogout, onSelectModuleStudy, onSelectModuleManage,
@@ -11,6 +12,7 @@ export default function DashboardPage({
   onGoToSentenceBuilder, onOpenSentenceBuilder,
   onGoToFillInBlank, onOpenFillBlank
 }) {
+  const { showToast } = useToast();
   const handleOpenPinyinChart = onGoToPinyinChart || onOpenPinyinChart;
   const handleOpenToneTrainer = onGoToToneTrainer || onOpenToneTrainer;
   const handleOpenMatchGame = onGoToMatchGame || onOpenMatchGame;
@@ -44,10 +46,11 @@ export default function DashboardPage({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при импорте');
+      showToast('Модули HSK 1 успешно импортированы!', 'success');
       fetchModules();
       fetchStats();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     } finally {
       setImportLoading(false);
     }
@@ -149,9 +152,10 @@ export default function DashboardPage({
       if (!response.ok) throw new Error(data.error || 'Ошибка при сохранении');
 
       setIsModalOpen(false);
+      showToast('Модуль успешно сохранен!', 'success');
       fetchModules();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     } finally {
       setActionLoading(false);
     }
@@ -168,9 +172,10 @@ export default function DashboardPage({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при удалении');
+      showToast('Модуль удален', 'info');
       fetchModules();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     }
   };
 
@@ -185,10 +190,11 @@ export default function DashboardPage({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при сбросе прогресса');
+      showToast('Прогресс модуля сброшен', 'info');
       fetchModules();
       fetchStats();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     }
   };
 
@@ -202,10 +208,11 @@ export default function DashboardPage({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при сбросе прогресса');
+      showToast('Весь прогресс изучения успешно сброшен', 'info');
       fetchModules();
       fetchStats();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, 'error');
     }
   };
 
