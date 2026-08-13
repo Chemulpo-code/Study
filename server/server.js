@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.5.1',
-    buildHash: 'v1.5.1-offline-sync-only',
+    version: '1.5.2',
+    buildHash: 'v1.5.2-instant-audio',
     serverTime: new Date().toISOString()
   });
 });
@@ -608,9 +608,10 @@ app.get('/api/tts', (req, res) => {
   const hash = crypto.createHash('md5').update(text.trim().toLowerCase() + speedSuffix).digest('hex');
   const cachedFilePath = path.join(cacheDir, `${hash}.mp3`);
 
-  // Если файл уже есть в кэше — отдаем его мгновенно!
+  // Если файл уже есть в кэше — отдаем его мгновенно с вечным браузерным кэшированием!
   if (fs.existsSync(cachedFilePath)) {
     res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     return fs.createReadStream(cachedFilePath).pipe(res);
   }
 
@@ -634,6 +635,7 @@ app.get('/api/tts', (req, res) => {
 
     // Отправляем файл клиенту
     res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     fs.createReadStream(cachedFilePath).pipe(res);
   });
 });
