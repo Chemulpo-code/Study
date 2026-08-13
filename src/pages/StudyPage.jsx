@@ -3,8 +3,11 @@ import { ArrowLeft, Check, X, RefreshCw } from '../components/Icons';
 import AudioPlayer from '../components/AudioPlayer';
 import WritingTrainer from '../components/WritingTrainer';
 import { API_BASE } from '../config';
+import { useToast } from '../components/Toast';
+import { cacheCardsLocally, getCachedCardsLocally, queueOfflineProgress } from '../utils/offlineStorage';
 
 export default function StudyPage({ token, moduleId, mode, initialMode, spaced, initialSpaced, displayMode, onToggleDisplayMode, onBackToDashboard, onBack }) {
+  const { showToast } = useToast();
   const handleBack = onBackToDashboard || onBack;
   const currentMode = mode || initialMode || 'cards';
   const isSpaced = spaced !== undefined ? spaced : (initialSpaced !== undefined ? initialSpaced : false);
@@ -88,6 +91,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
       
       const cardList = Array.isArray(data) ? data : [];
       setAllOriginalCards(cardList);
+      cacheCardsLocally(moduleId, cardList);
 
       let processedCards = [...cardList];
 
@@ -106,10 +110,18 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
       setCards(shuffled);
     } catch (err) {
       clearTimeout(timeoutId);
-      if (err.name === 'AbortError') {
-        setError('Превышено время ожидания ответа от сервера (6 сек). Проверьте интернет-соединение.');
+      const cached = getCachedCardsLocally(moduleId);
+      if (cached && cached.length > 0) {
+        setAllOriginalCards(cached);
+        const shuffled = [...cached].sort(() => Math.random() - 0.5);
+        setCards(shuffled);
+        showToast('Загружены карточки из офлайн-кэша 📶', 'info');
       } else {
-        setError(err.message || 'Ошибка подключения к серверу');
+        if (err.name === 'AbortError') {
+          setError('Превышено время ожидания ответа от сервера (6 сек). Проверьте интернет-соединение.');
+        } else {
+          setError(err.message || 'Ошибка подключения к серверу');
+        }
       }
     } finally {
       setLoading(false);
@@ -198,19 +210,29 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
     }));
 
     try {
-      await fetch(`${API_BASE}/api/progress`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          cardId: card.id,
-          status: knows ? 'know' : 'dont_know'
-        })
-      });
+      if (!navigator.onLine) {
+        queueOfflineProgress(card.id, knows ? 'know' : 'dont_know', moduleId);
+        showToast('Прогресс сохранен офлайн 📶', 'info');
+      } else {
+        const response = await fetch(`${API_BASE}/api/progress`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            cardId: card.id,
+            status: knows ? 'know' : 'dont_know'
+          })
+        });
+
+        if (!response.ok) {
+          queueOfflineProgress(card.id, knows ? 'know' : 'dont_know', moduleId);
+        }
+      }
     } catch (err) {
-      console.error('Ошибка отправки прогресса:', err);
+      queueOfflineProgress(card.id, knows ? 'know' : 'dont_know', moduleId);
+      showToast('Прогресс сохранен офлайн 📶', 'info');
     }
 
     setIsFlipped(false);

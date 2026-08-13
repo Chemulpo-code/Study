@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.4.1',
-    buildHash: 'v1.4.1-dual-query-relevance',
+    version: '1.5.0',
+    buildHash: 'v1.5.0-dialogues-and-offline-sync',
     serverTime: new Date().toISOString()
   });
 });
@@ -540,6 +540,104 @@ app.post('/api/progress', authenticateToken, (req, res) => {
 
   const progress = db.saveProgress(req.user.id, cardId, status);
   res.json(progress);
+});
+
+// Пакетная синхронизация прогресса из офлайн-очереди
+app.post('/api/progress/batch', authenticateToken, (req, res) => {
+  const { batch } = req.body;
+  if (!Array.isArray(batch) || batch.length === 0) {
+    return res.status(400).json({ error: 'Укажите массив batch с прогрессом.' });
+  }
+
+  let syncedCount = 0;
+  for (const item of batch) {
+    if (!item.cardId || !['know', 'dont_know'].includes(item.status)) continue;
+    const card = db.getCardById(item.cardId);
+    if (!card) continue;
+
+    const module = db.getModuleById(card.moduleId);
+    if (!module || module.userId !== req.user.id) continue;
+
+    db.saveProgress(req.user.id, item.cardId, item.status);
+    syncedCount++;
+  }
+
+  res.json({ message: `Успешно синхронизировано ${syncedCount} карточек.`, syncedCount });
+});
+
+// Генератор интерактивных микро-диалогов для модуля
+app.get('/api/modules/:moduleId/dialogue', authenticateToken, (req, res) => {
+  const module = db.getModuleById(req.params.moduleId);
+  if (!module || module.userId !== req.user.id) {
+    return res.status(403).json({ error: 'Нет доступа к этому модулю.' });
+  }
+
+  const cards = db.getCardsByModule(req.params.moduleId);
+  const dialogueLines = [];
+  
+  if (cards.length >= 2) {
+    const c1 = cards[0];
+    const c2 = cards[1];
+    const c3 = cards[2] || c1;
+
+    dialogueLines.push({
+      speaker: 'A',
+      chinese: `你好！请问，这个是${c1.characters}吗？`,
+      pinyin: getPinyin(`你好！请问，这个是${c1.characters}吗？`, { toneType: 'symbol' }),
+      translation: `Здравствуйте! Подскажите, пожалуйста, это (${c1.translation})?`
+    });
+
+    dialogueLines.push({
+      speaker: 'B',
+      chinese: `是的，这是${c1.characters}。你需要${c2.characters}吗？`,
+      pinyin: getPinyin(`是的，这是${c1.characters}。你需要${c2.characters}吗？`, { toneType: 'symbol' }),
+      translation: `Да, это (${c1.translation}). Вам нужно (${c2.translation})?`
+    });
+
+    dialogueLines.push({
+      speaker: 'A',
+      chinese: `太好了！我很喜欢${c2.characters}。${c3.characters}也很棒！`,
+      pinyin: getPinyin(`太好了！我很喜欢${c2.characters}。${c3.characters}也很棒！`, { toneType: 'symbol' }),
+      translation: `Замечательно! Мне очень нравится (${c2.translation}). (${c3.translation}) тоже отлично!`
+    });
+
+    dialogueLines.push({
+      speaker: 'B',
+      chinese: `没问题！祝你今天好运，再见！`,
+      pinyin: getPinyin(`没问题！祝你今天好运，再见！`, { toneType: 'symbol' }),
+      translation: `Без проблем! Желаю удачи сегодня, до свидания!`
+    });
+  } else {
+    dialogueLines.push({
+      speaker: 'A',
+      chinese: '你好！认识你很高兴。',
+      pinyin: 'Nǐ hǎo! Rènshi nǐ hěn gāoxìng.',
+      translation: 'Привет! Рад познакомиться с тобой.'
+    });
+    dialogueLines.push({
+      speaker: 'B',
+      chinese: '我也很高兴！你今天怎么样？',
+      pinyin: 'Wǒ yě hěn gāoxìng! Nǐ jīntiān zěnmeyàng?',
+      translation: 'Я тоже очень рад! Как у тебя сегодня дела?'
+    });
+    dialogueLines.push({
+      speaker: 'A',
+      chinese: '我今天非常好，谢谢你！',
+      pinyin: 'Wǒ jīntiān fēicháng hǎo, xièxie nǐ!',
+      translation: 'У меня сегодня всё отлично, спасибо!'
+    });
+    dialogueLines.push({
+      speaker: 'B',
+      chinese: '太棒了！祝你学习愉快！',
+      pinyin: 'Tài bàng le! Zhù nǐ xuéxí yúkuài!',
+      translation: 'Здорово! Желаю приятной учебы!'
+    });
+  }
+
+  res.json({
+    moduleTitle: module.title,
+    dialogue: dialogueLines
+  });
 });
 
 // Сбросить прогресс по модулю

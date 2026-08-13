@@ -10,11 +10,31 @@ import MatchGamePage from './pages/MatchGamePage';
 import SpeedSprintPage from './pages/SpeedSprintPage';
 import SentenceBuilderPage from './pages/SentenceBuilderPage';
 import FillInBlankPage from './pages/FillInBlankPage';
+import { useToast } from './components/Toast';
+import { syncOfflineProgressBatch } from './utils/offlineStorage';
 
 export default function App() {
+  const { showToast } = useToast();
   const [token, setToken] = useState(localStorage.getItem('study_token') || '');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Автоматическая синхронизация офлайн-прогресса при появлении интернета
+  useEffect(() => {
+    const handleOnline = () => {
+      if (token) {
+        syncOfflineProgressBatch(token, showToast);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    // Пробуем синхронизировать при запуске
+    if (navigator.onLine && token) {
+      syncOfflineProgressBatch(token, showToast);
+    }
+
+    return () => window.removeEventListener('online', handleOnline);
+  }, [token]);
   
   // Навигация с сохранением в localStorage
   const [currentPage, setCurrentPage] = useState(localStorage.getItem('study_current_page') || 'auth');
