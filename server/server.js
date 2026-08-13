@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.4.0',
-    buildHash: 'v1.4.0-inapp-toast',
+    version: '1.4.1',
+    buildHash: 'v1.4.1-dual-query-relevance',
     serverTime: new Date().toISOString()
   });
 });
@@ -301,34 +301,15 @@ function toSimplifiedChinese(str) {
   return str.split('').map(ch => tradToSimpMap[ch] || ch).join('');
 }
 
-// --- Вспомогательная функция для работы с Tatoeba API ---
-async function fetchTatoebaExample(word, excludeSentences = [], russianTranslation = '') {
-  if (!word || !word.trim()) return null;
-  const cleanWord = word.trim();
-  const cleanRus = (russianTranslation || '').trim().toLowerCase();
+function processTatoebaResults(results, candidatePool, cleanWord, cleanRus) {
+  for (const res of results) {
+    let chineseSentence = '';
+    let rusTranslation = '';
 
-  try {
-    const url = `https://tatoeba.org/en/api_v0/search?from=cmn&to=rus&query=${encodeURIComponent(cleanWord)}`;
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
-    });
-    
-    if (!response.ok) return null;
-    const data = await response.json();
-    
-    const results = Array.isArray(data?.results) ? data.results : [];
-    if (results.length === 0) return null;
-
-    const validExamples = [];
-
-    for (const res of results) {
-      const rawChinese = res.text;
-      if (!rawChinese) continue;
-      const chineseSentence = toSimplifiedChinese(rawChinese);
-
-      let rusTranslation = '';
+    // Если результат на китайском
+    if (res.lang === 'cmn') {
+      chineseSentence = toSimplifiedChinese(res.text);
       const translations = Array.isArray(res.translations) ? res.translations : [];
-      
       for (const group of translations) {
         if (Array.isArray(group)) {
           for (const item of group) {
@@ -340,59 +321,107 @@ async function fetchTatoebaExample(word, excludeSentences = [], russianTranslati
         }
         if (rusTranslation) break;
       }
-
-      if (chineseSentence && rusTranslation) {
-        // Подсчитываем релевантность примера
-        let score = 0;
-        const rusLower = rusTranslation.toLowerCase();
-
-        // 1. Совпадение по русскому смыслу (словарный перевод есть в предложении)
-        if (cleanRus && cleanRus.length >= 2) {
-          const rootWord = cleanRus.slice(0, Math.max(2, cleanRus.length - 2));
-          if (rusLower.includes(rootWord)) {
-            score += 20;
+    } else if (res.lang === 'rus') {
+      // Если результат на русском
+      rusTranslation = res.text;
+      const translations = Array.isArray(res.translations) ? res.translations : [];
+      for (const group of translations) {
+        if (Array.isArray(group)) {
+          for (const item of group) {
+            if (item.lang === 'cmn' && item.text) {
+              chineseSentence = toSimplifiedChinese(item.text);
+              break;
+            }
           }
         }
-
-        // 2. Присутствие ключевого китайского слова
-        if (chineseSentence.includes(cleanWord)) {
-          score += 5;
-        }
-
-        // 3. Отдаем приоритет средним удобным предложениям (от 3 до 25 символов)
-        if (chineseSentence.length >= 3 && chineseSentence.length <= 25) {
-          score += 5;
-        }
-
-        const sentencePinyin = getPinyin(chineseSentence, { toneType: 'symbol' });
-        validExamples.push({
-          chinese: chineseSentence,
-          pinyin: sentencePinyin,
-          translation: rusTranslation,
-          score
-        });
+        if (chineseSentence) break;
       }
     }
 
-    if (validExamples.length === 0) return null;
+    if (!chineseSentence || !rusTranslation) continue;
+    if (candidatePool.has(chineseSentence)) continue;
 
-    // Сортируем варианты по релевантности (наивысший балл первой)
-    validExamples.sort((a, b) => b.score - a.score);
+    let score = 0;
+    const rusLower = rusTranslation.toLowerCase();
 
-    // Исключаем предложения, которые уже показывались
-    const excludeSet = new Set(excludeSentences);
-    const newExamples = validExamples.filter(ex => !excludeSet.has(ex.chinese));
-
-    if (newExamples.length > 0) {
-      return newExamples[0];
+    // 1. ОГРОМНЫЙ Приоритет (+50): В русском переводе есть ключевое русское слово ("один", "кофе")
+    if (cleanRus && cleanRus.length >= 2) {
+      const rootWord = cleanRus.slice(0, Math.max(2, cleanRus.length - 2));
+      if (rusLower.includes(rootWord)) {
+        score += 50;
+      }
     }
 
-    // Если все пролистали — возвращаем наиболее подходящий
-    return validExamples[0];
-  } catch (err) {
-    console.error('Ошибка получения примера из Tatoeba:', err.message);
-    return null;
+    // 2. В китайском предложении есть искомый иероглиф (+20)
+    if (chineseSentence.includes(cleanWord)) {
+      score += 20;
+    }
+
+    // 3. Предложение удобной длины (+10)
+    if (chineseSentence.length >= 3 && chineseSentence.length <= 25) {
+      score += 10;
+    }
+
+    const sentencePinyin = getPinyin(chineseSentence, { toneType: 'symbol' });
+    candidatePool.set(chineseSentence, {
+      chinese: chineseSentence,
+      pinyin: sentencePinyin,
+      translation: rusTranslation,
+      score
+    });
   }
+}
+
+// --- Вспомогательная функция для работы с Tatoeba API ---
+async function fetchTatoebaExample(word, excludeSentences = [], russianTranslation = '') {
+  if (!word || !word.trim()) return null;
+  const cleanWord = word.trim();
+  const cleanRus = (russianTranslation || '').trim().toLowerCase();
+
+  const candidatePool = new Map();
+
+  // 1. Запрос cmn -> rus
+  try {
+    const urlCmn = `https://tatoeba.org/en/api_v0/search?from=cmn&to=rus&query=${encodeURIComponent(cleanWord)}`;
+    const resCmn = await fetch(urlCmn, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
+    if (resCmn.ok) {
+      const data = await resCmn.json();
+      processTatoebaResults(Array.isArray(data?.results) ? data.results : [], candidatePool, cleanWord, cleanRus);
+    }
+  } catch (e) {
+    console.error('Ошибка cmn->rus:', e.message);
+  }
+
+  // 2. Запрос rus -> cmn для 100% прямого точного совпадения по смыслу слова
+  if (cleanRus && cleanRus.length >= 2) {
+    try {
+      const urlRus = `https://tatoeba.org/en/api_v0/search?from=rus&to=cmn&query=${encodeURIComponent(cleanRus)}`;
+      const resRus = await fetch(urlRus, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } });
+      if (resRus.ok) {
+        const data = await resRus.json();
+        processTatoebaResults(Array.isArray(data?.results) ? data.results : [], candidatePool, cleanWord, cleanRus);
+      }
+    } catch (e) {
+      console.error('Ошибка rus->cmn:', e.message);
+    }
+  }
+
+  const validExamples = Array.from(candidatePool.values());
+  if (validExamples.length === 0) return null;
+
+  // Сортируем варианты по релевантности (наивысший балл первой)
+  validExamples.sort((a, b) => b.score - a.score);
+
+  // Исключаем предложения, которые уже показывались
+  const excludeSet = new Set(excludeSentences);
+  const newExamples = validExamples.filter(ex => !excludeSet.has(ex.chinese));
+
+  if (newExamples.length > 0) {
+    return newExamples[0];
+  }
+
+  // Если все пролистали — возвращаем наиболее подходящий
+  return validExamples[0];
 }
 
 // Эндпоинт ручной генерации примера предложения из Tatoeba API с ротацией
