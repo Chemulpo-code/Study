@@ -159,13 +159,13 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   }
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '40px 20px' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 20px 110px 20px' }}>
       {/* Шапка страницы */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '32px',
+        marginBottom: '28px',
         flexWrap: 'wrap',
         gap: '16px'
       }}>
@@ -184,14 +184,6 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Управление словами и предложениями</p>
           </div>
         </div>
-
-        <button 
-          onClick={handleOpenCreateForm}
-          className="btn-neon btn-cyan"
-          style={{ padding: '10px 20px', fontSize: '0.9rem' }}
-        >
-          <Plus size={18} /> Добавить слово / фразу
-        </button>
       </div>
 
       {error && (
@@ -434,6 +426,40 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
           </div>
         </div>
       )}
+
+      {/* Прикрепленная внизу экрана по центру кнопка "Добавить слово / фразу" (Sticky FAB) */}
+      <div style={{
+        position: 'fixed',
+        bottom: '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 99,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 'auto',
+        maxWidth: '90vw'
+      }}>
+        <button 
+          onClick={handleOpenCreateForm}
+          className="btn-neon btn-cyan"
+          style={{ 
+            padding: '14px 28px', 
+            fontSize: '0.95rem', 
+            fontWeight: '600',
+            borderRadius: '30px',
+            boxShadow: '0 8px 32px rgba(0, 242, 254, 0.4), 0 4px 16px rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid rgba(0, 242, 254, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Plus size={20} /> Добавить слово / фразу
+        </button>
+      </div>
     </div>
   );
 }

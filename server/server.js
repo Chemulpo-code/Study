@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.2.4',
-    buildHash: 'v1.2.4-games-fix',
+    version: '1.2.5',
+    buildHash: 'v1.2.5-sticky-fab',
     serverTime: new Date().toISOString()
   });
 });
