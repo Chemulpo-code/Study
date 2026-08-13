@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.5.2',
-    buildHash: 'v1.5.2-instant-audio',
+    version: '1.5.3',
+    buildHash: 'v1.5.3-no-quiz-autosound',
     serverTime: new Date().toISOString()
   });
 });

@@ -172,11 +172,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
       setQuizOptions(Array.from(options).sort(() => Math.random() - 0.5));
       setSelectedOption(null);
       setIsQuizCorrect(null);
-
-      // Автозвук при показе нового вопроса викторины
-      setTimeout(() => {
-        triggerAutoplaySound(cards[currentIndex].characters);
-      }, 300);
     }
   }, [cards, currentIndex, currentMode, allOriginalCards]);
 
@@ -255,9 +250,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
 
     setSelectedOption(option);
     setIsQuizCorrect(isCorrect);
-
-    // Звук при ответе
-    triggerAutoplaySound(cards[currentIndex].characters);
 
     // Отправляем результат в базу
     try {
