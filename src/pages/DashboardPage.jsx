@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, Plus, Edit, Trash, BookOpen, Book, RefreshCw } from '../components/Icons';
 import { API_BASE, APP_VERSION, BUILD_TIME } from '../config';
 import { useToast } from '../components/Toast';
-import DialogueModal from '../components/DialogueModal';
 import { cacheModulesLocally, getCachedModulesLocally } from '../utils/offlineStorage';
 
 export default function DashboardPage({ 
@@ -26,7 +25,6 @@ export default function DashboardPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [serverInfo, setServerInfo] = useState(null);
-  const [selectedDialogueModuleId, setSelectedDialogueModuleId] = useState(null);
   
   // Состояния для HSK 1 и выбора режимов тренировки
   const [importLoading, setImportLoading] = useState(false);
@@ -906,27 +904,19 @@ export default function DashboardPage({
                 </div>
 
                 {/* Действия */}
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
                   <button 
                     onClick={() => handleOpenStudyMode(module.id)}
                     className="btn-neon btn-green"
                     disabled={module.totalCards === 0}
-                    style={{ flex: 1.2, padding: '8px 10px', fontSize: '0.85rem', opacity: module.totalCards === 0 ? 0.5 : 1 }}
+                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem', opacity: module.totalCards === 0 ? 0.5 : 1 }}
                   >
                     <BookOpen size={14} /> Учить
                   </button>
                   <button 
-                    onClick={() => setSelectedDialogueModuleId(module.id)}
-                    className="btn-neon btn-cyan"
-                    title="Прослушать диалог темы"
-                    style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                  >
-                    💬 Диалог
-                  </button>
-                  <button 
                     onClick={() => onSelectModuleManage(module.id)}
                     className="btn-neon btn-secondary"
-                    style={{ flex: 1, padding: '8px 10px', fontSize: '0.85rem' }}
+                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem' }}
                   >
                     <Edit size={14} /> Слова
                   </button>
@@ -1175,15 +1165,6 @@ export default function DashboardPage({
           )}
         </div>
       </footer>
-
-      {/* Модальное окно интерактивного диалога */}
-      {selectedDialogueModuleId && (
-        <DialogueModal
-          token={token}
-          moduleId={selectedDialogueModuleId}
-          onClose={() => setSelectedDialogueModuleId(null)}
-        />
-      )}
     </div>
   );
 }
