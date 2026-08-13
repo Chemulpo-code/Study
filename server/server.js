@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.2.5',
-    buildHash: 'v1.2.5-sticky-fab',
+    version: '1.3.0',
+    buildHash: 'v1.3.0-tatoeba-api',
     serverTime: new Date().toISOString()
   });
 });
@@ -286,8 +286,76 @@ app.get('/api/modules/:moduleId/cards', authenticateToken, (req, res) => {
   res.json(cardsWithProgress);
 });
 
+// --- Вспомогательная функция для работы с Tatoeba API ---
+async function fetchTatoebaExample(word) {
+  if (!word || !word.trim()) return null;
+  const cleanWord = word.trim();
+  
+  try {
+    const url = `https://tatoeba.org/en/api_v0/search?from=cmn&to=rus&query=${encodeURIComponent(cleanWord)}`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    
+    if (!response.ok) return null;
+    const data = await response.json();
+    
+    const results = Array.isArray(data?.results) ? data.results : [];
+    if (results.length === 0) return null;
+
+    for (const res of results) {
+      const chineseSentence = res.text;
+      if (!chineseSentence) continue;
+
+      let rusTranslation = '';
+      const translations = Array.isArray(res.translations) ? res.translations : [];
+      
+      for (const group of translations) {
+        if (Array.isArray(group)) {
+          for (const item of group) {
+            if (item.lang === 'rus' && item.text) {
+              rusTranslation = item.text;
+              break;
+            }
+          }
+        }
+        if (rusTranslation) break;
+      }
+
+      if (chineseSentence && rusTranslation) {
+        const sentencePinyin = getPinyin(chineseSentence, { toneType: 'symbol' });
+        return {
+          chinese: chineseSentence,
+          pinyin: sentencePinyin,
+          translation: rusTranslation
+        };
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Ошибка получения примера из Tatoeba:', err.message);
+    return null;
+  }
+}
+
+// Эндпоинт ручной генерации примера предложения из Tatoeba API
+app.get('/api/tatoeba/example', authenticateToken, async (req, res) => {
+  const { word } = req.query;
+  if (!word) {
+    return res.status(400).json({ error: 'Укажите слово для поиска примера' });
+  }
+
+  const example = await fetchTatoebaExample(word);
+  if (!example) {
+    return res.status(404).json({ error: 'Пример предложения не найден в базе Tatoeba' });
+  }
+
+  res.json({ example });
+});
+
 // Создать карточку
-app.post('/api/modules/:moduleId/cards', authenticateToken, (req, res) => {
+app.post('/api/modules/:moduleId/cards', authenticateToken, async (req, res) => {
   const { characters, pinyin, translation, examples } = req.body;
   const module = db.getModuleById(req.params.moduleId);
   if (!module || module.userId !== req.user.id) {
@@ -300,12 +368,20 @@ app.post('/api/modules/:moduleId/cards', authenticateToken, (req, res) => {
 
   const finalPinyin = pinyin && pinyin.trim() ? pinyin.trim() : getPinyin(characters);
 
-  const card = db.createCard(req.params.moduleId, characters, finalPinyin, translation, examples);
+  let finalExamples = examples || [];
+  if ((!finalExamples || finalExamples.length === 0) && characters) {
+    const autoExample = await fetchTatoebaExample(characters);
+    if (autoExample) {
+      finalExamples = [autoExample];
+    }
+  }
+
+  const card = db.createCard(req.params.moduleId, characters, finalPinyin, translation, finalExamples);
   res.status(201).json({ ...card, status: 'new' });
 });
 
 // Редактировать карточку
-app.put('/api/cards/:id', authenticateToken, (req, res) => {
+app.put('/api/cards/:id', authenticateToken, async (req, res) => {
   const { characters, pinyin, translation, examples } = req.body;
   const card = db.getCardById(req.params.id);
   if (!card) {
@@ -320,7 +396,15 @@ app.put('/api/cards/:id', authenticateToken, (req, res) => {
 
   const finalPinyin = pinyin && pinyin.trim() ? pinyin.trim() : (characters ? getPinyin(characters) : undefined);
 
-  const updatedCard = db.updateCard(req.params.id, characters, finalPinyin, translation, examples);
+  let finalExamples = examples || [];
+  if ((!finalExamples || finalExamples.length === 0) && characters) {
+    const autoExample = await fetchTatoebaExample(characters);
+    if (autoExample) {
+      finalExamples = [autoExample];
+    }
+  }
+
+  const updatedCard = db.updateCard(req.params.id, characters, finalPinyin, translation, finalExamples);
   res.json(updatedCard);
 });
 

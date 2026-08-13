@@ -23,6 +23,34 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   const [exampleTranslation, setExampleTranslation] = useState('');
   
   const [formLoading, setFormLoading] = useState(false);
+  const [isTatoebaLoading, setIsTatoebaLoading] = useState(false);
+
+  const handleFetchTatoebaExample = async () => {
+    if (!characters.trim()) {
+      alert('Сначала введите иероглифы!');
+      return;
+    }
+
+    setIsTatoebaLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/tatoeba/example?word=${encodeURIComponent(characters.trim())}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Пример предложения не найден в базе Tatoeba');
+
+      if (data.example) {
+        setExampleChinese(data.example.chinese || '');
+        setExamplePinyin(data.example.pinyin || '');
+        setExampleTranslation(data.example.translation || '');
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsTatoebaLoading(false);
+    }
+  };
 
   // Загрузка модуля и его карточек
   const loadData = async () => {
@@ -369,9 +397,33 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 paddingTop: '16px',
                 marginBottom: '24px'
               }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: '500', display: 'block', marginBottom: '12px', color: 'var(--neon-cyan)' }}>
-                  Пример предложения (необязательно)
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '500', color: 'var(--neon-cyan)' }}>
+                    Пример предложения (необязательно)
+                  </span>
+                  
+                  <button
+                    type="button"
+                    onClick={handleFetchTatoebaExample}
+                    disabled={isTatoebaLoading || !characters.trim()}
+                    className="btn-neon btn-secondary"
+                    style={{
+                      padding: '4px 12px',
+                      fontSize: '0.75rem',
+                      borderRadius: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(0, 242, 254, 0.1)',
+                      border: '1px solid rgba(0, 242, 254, 0.3)',
+                      color: 'var(--neon-cyan)',
+                      cursor: isTatoebaLoading || !characters.trim() ? 'not-allowed' : 'pointer',
+                      opacity: !characters.trim() ? 0.5 : 1
+                    }}
+                  >
+                    {isTatoebaLoading ? '⌛ Поиск...' : '✨ Найти пример (Tatoeba)'}
+                  </button>
+                </div>
                 
                 <div style={{ marginBottom: '10px' }}>
                   <input 
