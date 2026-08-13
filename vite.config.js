@@ -13,7 +13,7 @@ const buildTimestamp = new Date().toLocaleString('ru-RU', {
 export default defineConfig({
   plugins: [react()],
   define: {
-    __APP_VERSION__: JSON.stringify('1.3.0'),
+    __APP_VERSION__: JSON.stringify('1.3.1'),
     __BUILD_TIME__: JSON.stringify(buildTimestamp)
   }
 });

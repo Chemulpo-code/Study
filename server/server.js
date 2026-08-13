@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.3.0',
-    buildHash: 'v1.3.0-tatoeba-api',
+    version: '1.3.1',
+    buildHash: 'v1.3.1-tatoeba-rotation',
     serverTime: new Date().toISOString()
   });
 });
@@ -287,7 +287,7 @@ app.get('/api/modules/:moduleId/cards', authenticateToken, (req, res) => {
 });
 
 // --- Вспомогательная функция для работы с Tatoeba API ---
-async function fetchTatoebaExample(word) {
+async function fetchTatoebaExample(word, excludeSentences = []) {
   if (!word || !word.trim()) return null;
   const cleanWord = word.trim();
   
@@ -302,6 +302,8 @@ async function fetchTatoebaExample(word) {
     
     const results = Array.isArray(data?.results) ? data.results : [];
     if (results.length === 0) return null;
+
+    const validExamples = [];
 
     for (const res of results) {
       const chineseSentence = res.text;
@@ -324,29 +326,49 @@ async function fetchTatoebaExample(word) {
 
       if (chineseSentence && rusTranslation) {
         const sentencePinyin = getPinyin(chineseSentence, { toneType: 'symbol' });
-        return {
+        validExamples.push({
           chinese: chineseSentence,
           pinyin: sentencePinyin,
           translation: rusTranslation
-        };
+        });
       }
     }
 
-    return null;
+    if (validExamples.length === 0) return null;
+
+    // Исключаем предложения, которые уже показывались
+    const excludeSet = new Set(excludeSentences);
+    const newExamples = validExamples.filter(ex => !excludeSet.has(ex.chinese));
+
+    if (newExamples.length > 0) {
+      return newExamples[0];
+    }
+
+    // Если все уже показывались — возвращаем случайный вариант из найденных для ротации
+    return validExamples[Math.floor(Math.random() * validExamples.length)];
   } catch (err) {
     console.error('Ошибка получения примера из Tatoeba:', err.message);
     return null;
   }
 }
 
-// Эндпоинт ручной генерации примера предложения из Tatoeba API
+// Эндпоинт ручной генерации примера предложения из Tatoeba API с ротацией
 app.get('/api/tatoeba/example', authenticateToken, async (req, res) => {
-  const { word } = req.query;
+  const { word, exclude } = req.query;
   if (!word) {
     return res.status(400).json({ error: 'Укажите слово для поиска примера' });
   }
 
-  const example = await fetchTatoebaExample(word);
+  let excludeList = [];
+  if (exclude) {
+    try {
+      excludeList = JSON.parse(exclude);
+    } catch {
+      excludeList = [exclude];
+    }
+  }
+
+  const example = await fetchTatoebaExample(word, excludeList);
   if (!example) {
     return res.status(404).json({ error: 'Пример предложения не найден в базе Tatoeba' });
   }

@@ -21,6 +21,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   const [exampleChinese, setExampleChinese] = useState('');
   const [examplePinyin, setExamplePinyin] = useState('');
   const [exampleTranslation, setExampleTranslation] = useState('');
+  const [usedTatoebaSentences, setUsedTatoebaSentences] = useState([]);
   
   const [formLoading, setFormLoading] = useState(false);
   const [isTatoebaLoading, setIsTatoebaLoading] = useState(false);
@@ -34,7 +35,14 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     setIsTatoebaLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/tatoeba/example?word=${encodeURIComponent(characters.trim())}`, {
+      // Собираем текущий список исключений (текущие и ранее загруженные в рамках этой формы предложения)
+      const currentExcludes = [...usedTatoebaSentences];
+      if (exampleChinese.trim() && !currentExcludes.includes(exampleChinese.trim())) {
+        currentExcludes.push(exampleChinese.trim());
+      }
+
+      const excludeParam = encodeURIComponent(JSON.stringify(currentExcludes));
+      const response = await fetch(`${API_BASE}/api/tatoeba/example?word=${encodeURIComponent(characters.trim())}&exclude=${excludeParam}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -44,6 +52,10 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
         setExampleChinese(data.example.chinese || '');
         setExamplePinyin(data.example.pinyin || '');
         setExampleTranslation(data.example.translation || '');
+
+        if (data.example.chinese && !usedTatoebaSentences.includes(data.example.chinese)) {
+          setUsedTatoebaSentences(prev => [...prev, data.example.chinese]);
+        }
       }
     } catch (err) {
       alert(err.message);
@@ -91,6 +103,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     setExampleChinese('');
     setExamplePinyin('');
     setExampleTranslation('');
+    setUsedTatoebaSentences([]);
     setIsFormOpen(true);
   };
 
@@ -99,6 +112,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     setCharacters(card.characters);
     setPinyin(card.pinyin);
     setTranslation(card.translation);
+    setUsedTatoebaSentences(card.examples ? card.examples.map(e => e.chinese).filter(Boolean) : []);
     
     if (card.examples && card.examples.length > 0) {
       setExampleChinese(card.examples[0].chinese || '');
