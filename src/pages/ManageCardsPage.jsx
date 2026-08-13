@@ -42,7 +42,8 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       }
 
       const excludeParam = encodeURIComponent(JSON.stringify(currentExcludes));
-      const response = await fetch(`${API_BASE}/api/tatoeba/example?word=${encodeURIComponent(characters.trim())}&exclude=${excludeParam}`, {
+      const translationParam = encodeURIComponent(translation.trim());
+      const response = await fetch(`${API_BASE}/api/tatoeba/example?word=${encodeURIComponent(characters.trim())}&translation=${translationParam}&exclude=${excludeParam}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();

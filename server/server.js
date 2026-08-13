@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.3.1',
-    buildHash: 'v1.3.1-tatoeba-rotation',
+    version: '1.3.2',
+    buildHash: 'v1.3.2-smart-relevance',
     serverTime: new Date().toISOString()
   });
 });
@@ -286,11 +286,27 @@ app.get('/api/modules/:moduleId/cards', authenticateToken, (req, res) => {
   res.json(cardsWithProgress);
 });
 
+// Словарь конвертации традиционных иероглифов в упрощенные для частых слов Tatoeba
+const tradToSimpMap = {
+  '來': '来', '個': '个', '這': '这', '那': '那', '麼': '么', '什麼': '什么',
+  '時': '时', '候': '候', '嗎': '吗', '會': '会', '聽': '听', '說': '说',
+  '讀': '读', '寫': '写', '開': '开', '關': '关', '點': '点', '愛': '爱',
+  '歡': '欢', '錢': '钱', '買': '买', '車': '车', '話': '话', '語': '语',
+  '漢': '汉', '學': '学', '校': '校', '師': '师', '國': '国', '門': '门',
+  '為': '为', '見': '见', '對': '对', '過': '过', '髮': '发', '發': '发'
+};
+
+function toSimplifiedChinese(str) {
+  if (!str) return '';
+  return str.split('').map(ch => tradToSimpMap[ch] || ch).join('');
+}
+
 // --- Вспомогательная функция для работы с Tatoeba API ---
-async function fetchTatoebaExample(word, excludeSentences = []) {
+async function fetchTatoebaExample(word, excludeSentences = [], russianTranslation = '') {
   if (!word || !word.trim()) return null;
   const cleanWord = word.trim();
-  
+  const cleanRus = (russianTranslation || '').trim().toLowerCase();
+
   try {
     const url = `https://tatoeba.org/en/api_v0/search?from=cmn&to=rus&query=${encodeURIComponent(cleanWord)}`;
     const response = await fetch(url, {
@@ -306,8 +322,9 @@ async function fetchTatoebaExample(word, excludeSentences = []) {
     const validExamples = [];
 
     for (const res of results) {
-      const chineseSentence = res.text;
-      if (!chineseSentence) continue;
+      const rawChinese = res.text;
+      if (!rawChinese) continue;
+      const chineseSentence = toSimplifiedChinese(rawChinese);
 
       let rusTranslation = '';
       const translations = Array.isArray(res.translations) ? res.translations : [];
@@ -325,16 +342,42 @@ async function fetchTatoebaExample(word, excludeSentences = []) {
       }
 
       if (chineseSentence && rusTranslation) {
+        // Подсчитываем релевантность примера
+        let score = 0;
+        const rusLower = rusTranslation.toLowerCase();
+
+        // 1. Совпадение по русскому смыслу (словарный перевод есть в предложении)
+        if (cleanRus && cleanRus.length >= 2) {
+          const rootWord = cleanRus.slice(0, Math.max(2, cleanRus.length - 2));
+          if (rusLower.includes(rootWord)) {
+            score += 20;
+          }
+        }
+
+        // 2. Присутствие ключевого китайского слова
+        if (chineseSentence.includes(cleanWord)) {
+          score += 5;
+        }
+
+        // 3. Отдаем приоритет средним удобным предложениям (от 3 до 25 символов)
+        if (chineseSentence.length >= 3 && chineseSentence.length <= 25) {
+          score += 5;
+        }
+
         const sentencePinyin = getPinyin(chineseSentence, { toneType: 'symbol' });
         validExamples.push({
           chinese: chineseSentence,
           pinyin: sentencePinyin,
-          translation: rusTranslation
+          translation: rusTranslation,
+          score
         });
       }
     }
 
     if (validExamples.length === 0) return null;
+
+    // Сортируем варианты по релевантности (наивысший балл первой)
+    validExamples.sort((a, b) => b.score - a.score);
 
     // Исключаем предложения, которые уже показывались
     const excludeSet = new Set(excludeSentences);
@@ -344,8 +387,8 @@ async function fetchTatoebaExample(word, excludeSentences = []) {
       return newExamples[0];
     }
 
-    // Если все уже показывались — возвращаем случайный вариант из найденных для ротации
-    return validExamples[Math.floor(Math.random() * validExamples.length)];
+    // Если все пролистали — возвращаем наиболее подходящий
+    return validExamples[0];
   } catch (err) {
     console.error('Ошибка получения примера из Tatoeba:', err.message);
     return null;
@@ -354,7 +397,7 @@ async function fetchTatoebaExample(word, excludeSentences = []) {
 
 // Эндпоинт ручной генерации примера предложения из Tatoeba API с ротацией
 app.get('/api/tatoeba/example', authenticateToken, async (req, res) => {
-  const { word, exclude } = req.query;
+  const { word, exclude, translation } = req.query;
   if (!word) {
     return res.status(400).json({ error: 'Укажите слово для поиска примера' });
   }
@@ -368,7 +411,7 @@ app.get('/api/tatoeba/example', authenticateToken, async (req, res) => {
     }
   }
 
-  const example = await fetchTatoebaExample(word, excludeList);
+  const example = await fetchTatoebaExample(word, excludeList, translation);
   if (!example) {
     return res.status(404).json({ error: 'Пример предложения не найден в базе Tatoeba' });
   }
