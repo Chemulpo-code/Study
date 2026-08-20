@@ -348,9 +348,9 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
         <button 
           onClick={handleBack} 
           className="btn-neon btn-secondary" 
-          style={{ padding: '8px 20px', fontSize: '0.85rem', marginTop: '12px' }}
+          style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '10px', marginTop: '12px' }}
         >
-          <ArrowLeft size={16} /> Вернуться в меню
+          <ArrowLeft size={16} /> Назад
         </button>
       </div>
     );
@@ -368,8 +368,8 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
           textAlign: 'center'
         }}>
           <p>{error}</p>
-          <button onClick={handleBack} className="btn-neon btn-secondary" style={{ marginTop: '16px', padding: '8px 16px' }}>
-            Вернуться назад
+          <button onClick={handleBack} className="btn-neon btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '10px', marginTop: '16px' }}>
+            <ArrowLeft size={16} /> Назад
           </button>
         </div>
       </div>
@@ -389,8 +389,8 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
               ? 'На сегодня у вас нет карточек к повторению в этом модуле. Отличная работа! Вы можете продолжить в режиме просмотра всех карточек подряд или пройти тест/диктант.' 
               : 'В этом модуле отсутствуют карточки. Добавьте новые слова в настройках модуля.'}
           </p>
-          <button onClick={handleBack} className="btn-neon btn-cyan" style={{ padding: '10px 20px' }}>
-            <ArrowLeft size={16} /> На главную
+          <button onClick={handleBack} className="btn-neon btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '10px' }}>
+            <ArrowLeft size={16} /> Назад
           </button>
         </div>
       </div>
@@ -401,37 +401,59 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
   const progressPercent = Math.round(((currentIndex) / cards.length) * 100);
 
   return (
-    <div style={{ maxWidth: '650px', margin: '0 auto', padding: '40px 20px' }}>
-      {/* Шапка тренировки */}
+    <div style={{ maxWidth: '650px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
+      {/* Прикрепленная верхняя панель навигации */}
       <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        background: 'rgba(10, 14, 23, 0.88)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        padding: '16px 20px',
+        margin: '-40px -20px 24px -20px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '32px'
+        flexWrap: 'wrap',
+        gap: '16px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
       }}>
-        <button 
-          onClick={handleBack}
-          className="btn-neon btn-secondary"
-          style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-        >
-          <ArrowLeft size={16} /> В меню
-        </button>
-        
-        {/* Режим тренировки */}
-        <span style={{
-          fontSize: '0.8rem',
-          background: 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid var(--border-color)',
-          borderRadius: '20px',
-          padding: '4px 12px',
-          color: 'var(--neon-cyan)'
-        }}>
-          {currentMode === 'cards' && (isSpaced ? '⏰ Интервальные карточки' : '🗂️ Карточки (Все)')}
-          {currentMode === 'quiz' && '🎯 Викторина'}
-          {currentMode === 'dictation' && '✍️ Диктант'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button 
+            onClick={handleBack}
+            className="btn-neon btn-secondary"
+            style={{ 
+              padding: '8px 16px', 
+              fontSize: '0.85rem', 
+              fontWeight: '600',
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              borderRadius: '10px'
+            }}
+          >
+            <ArrowLeft size={16} /> Назад
+          </button>
+          
+          {/* Режим тренировки */}
+          <span style={{
+            fontSize: '0.8rem',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '20px',
+            padding: '4px 12px',
+            color: 'var(--neon-cyan)',
+            fontWeight: '600'
+          }}>
+            {currentMode === 'cards' && (isSpaced ? '⏰ Интервальные карточки' : '🗂️ Карточки (Все)')}
+            {currentMode === 'quiz' && '🎯 Викторина'}
+            {currentMode === 'dictation' && '✍️ Диктант'}
+          </span>
+        </div>
 
-        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
           Сессия: {currentIndex + 1} из {cards.length}
         </span>
       </div>

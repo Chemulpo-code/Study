@@ -233,9 +233,11 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
             style={{ 
               padding: '8px 16px', 
               fontSize: '0.85rem',
+              fontWeight: '600',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              borderRadius: '10px'
             }}
           >
             <ArrowLeft size={16} /> Назад

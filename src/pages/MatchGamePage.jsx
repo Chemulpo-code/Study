@@ -220,8 +220,8 @@ export default function MatchGamePage({ token, displayMode, onBack }) {
   if (allCards.length < 8) {
     return (
       <div style={{ maxWidth: '600px', margin: '40px auto', padding: '0 20px', textAlign: 'center' }}>
-        <button onClick={onBack} className="btn-neon btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '32px' }}>
-          <ArrowLeft size={16} /> Назад на дашборд
+        <button onClick={onBack} className="btn-neon btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '10px', marginBottom: '32px' }}>
+          <ArrowLeft size={16} /> Назад
         </button>
         <div className="glass-panel" style={{ padding: '40px 30px', borderRadius: '24px' }}>
           <h2 style={{ fontSize: '1.6rem', fontWeight: '700', marginBottom: '16px', color: 'var(--neon-red)' }}>
@@ -240,24 +240,63 @@ export default function MatchGamePage({ token, displayMode, onBack }) {
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}>
-      {/* Шапка управления */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
-        <button onClick={onBack} className="btn-neon btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-          <ArrowLeft size={16} /> Назад
-        </button>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
+      {/* Прикрепленная верхняя панель навигации */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        background: 'rgba(10, 14, 23, 0.88)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        padding: '16px 20px',
+        margin: '-40px -20px 24px -20px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <button 
+            onClick={onBack} 
+            className="btn-neon btn-secondary" 
+            style={{ 
+              padding: '8px 16px', 
+              fontSize: '0.85rem', 
+              fontWeight: '600',
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              borderRadius: '10px'
+            }}
+          >
+            <ArrowLeft size={16} /> Назад
+          </button>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#fff', margin: 0 }}>
+            🎮 Игра «Найди пару»
+          </h2>
+        </div>
         
-        {gameStarted && (
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <div className="glass-panel" style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '0.9rem', color: '#fff', border: '1px solid rgba(255,255,255,0.05)' }}>
+        {gameStarted ? (
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div className="glass-panel" style={{ padding: '6px 14px', borderRadius: '10px', fontSize: '0.85rem', color: '#fff', border: '1px solid rgba(255,255,255,0.08)' }}>
               ⏱️ Время: <span style={{ color: 'var(--neon-cyan)', fontWeight: '700' }}>{formatTime(timer)}</span>
             </div>
             {bestTime && (
-              <div className="glass-panel" style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="glass-panel" style={{ padding: '6px 14px', borderRadius: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 🏆 Рекорд: <span style={{ color: 'var(--neon-green)', fontWeight: '700' }}>{formatTime(bestTime)}</span>
               </div>
             )}
           </div>
+        ) : (
+          bestTime && (
+            <div className="glass-panel" style={{ padding: '6px 14px', borderRadius: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              🏆 Рекорд: <span style={{ color: 'var(--neon-green)', fontWeight: '700' }}>{formatTime(bestTime)}</span>
+            </div>
+          )
         )}
       </div>
 
