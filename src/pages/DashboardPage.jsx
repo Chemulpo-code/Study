@@ -553,6 +553,161 @@ export default function DashboardPage({
         </div>
       </div>
 
+      {/* Заголовок списка модулей */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px'
+      }}>
+        <h3 style={{ fontSize: '1.4rem', fontWeight: '600' }}>Мои модули</h3>
+        <button 
+          onClick={handleOpenCreateModal}
+          className="btn-neon btn-cyan"
+          style={{ padding: '10px 20px', fontSize: '0.95rem' }}
+        >
+          <Plus size={18} /> Создать модуль
+        </button>
+      </div>
+
+      {error && (
+        <div style={{
+          background: 'rgba(255, 51, 102, 0.1)',
+          border: '1px solid rgba(255, 51, 102, 0.3)',
+          color: '#ff668c',
+          padding: '16px',
+          borderRadius: '12px',
+          marginBottom: '24px'
+        }}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
+          Загрузка модулей...
+        </div>
+      ) : modules.length === 0 ? (
+        <div className="glass-panel" style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)', marginBottom: '40px' }}>
+          <p style={{ marginBottom: '16px' }}>У вас пока нет ни одного модуля.</p>
+          <button 
+            onClick={handleOpenCreateModal}
+            className="btn-neon btn-cyan"
+            style={{ padding: '8px 16px' }}
+          >
+            <Plus size={16} /> Создать первый модуль
+          </button>
+        </div>
+      ) : (
+        /* Сетка модулей */
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: '24px',
+          marginBottom: '40px'
+        }}>
+          {modules.map(module => (
+            <div key={module.id} className="glass-panel" style={{
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '240px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Верхняя часть: Название и Меню редактирования */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <h4 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '8px', paddingRight: '40px' }}>
+                    {module.title}
+                  </h4>
+                  {/* Иконки редактирования/удаления */}
+                  <div style={{ display: 'flex', gap: '8px', position: 'absolute', top: '20px', right: '20px' }}>
+                    <button 
+                      onClick={() => handleOpenEditModal(module)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                      title="Редактировать"
+                    >
+                      <Edit size={16} className="btn-edit-hover" />
+                    </button>
+                    <button 
+                      onClick={() => handleResetProgress(module.id, module.title)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                      title="Сбросить прогресс"
+                    >
+                      <RefreshCw size={14} className="btn-edit-hover" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteModule(module.id, module.title)}
+                      style={{ background: 'none', border: 'none', color: 'var(--neon-red)', cursor: 'pointer' }}
+                      title="Удалить"
+                    >
+                      <Trash size={16} className="btn-edit-hover" />
+                    </button>
+                  </div>
+                </div>
+                <p style={{
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.85rem',
+                  lineHeight: '1.4',
+                  display: '-webkit-box',
+                  WebkitLineClamp: '2',
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  marginBottom: '16px'
+                }}>
+                  {module.description || 'Нет описания'}
+                </p>
+              </div>
+
+              {/* Нижняя часть: Прогресс и Кнопки */}
+              <div>
+                {/* Карточки и Прогресс-бар */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    <span>{module.totalCards} карточек</span>
+                    <span style={{ color: module.learnedPercentage > 0 ? 'var(--neon-green)' : 'var(--text-secondary)' }}>
+                      {module.learnedPercentage}% изучено
+                    </span>
+                  </div>
+                  {/* Контейнер прогресс-бара */}
+                  <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${module.learnedPercentage}%`,
+                      height: '100%',
+                      background: 'linear-gradient(90deg, var(--neon-cyan), var(--neon-green))',
+                      boxShadow: '0 0 8px rgba(0, 255, 136, 0.5)',
+                      borderRadius: '3px',
+                      transition: 'width 0.4s ease'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Действия */}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button 
+                    onClick={() => handleOpenStudyMode(module.id)}
+                    className="btn-neon btn-green"
+                    disabled={module.totalCards === 0}
+                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem', opacity: module.totalCards === 0 ? 0.5 : 1 }}
+                  >
+                    <BookOpen size={14} /> Учить
+                  </button>
+                  <button 
+                    onClick={() => onSelectModuleManage(module.id)}
+                    className="btn-neon btn-secondary"
+                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem' }}
+                  >
+                    <Edit size={14} /> Слова
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Секция тренажеров и игр */}
       <div style={{ marginBottom: '40px' }}>
         <h3 style={{ fontSize: '1.4rem', fontWeight: '600', marginBottom: '20px' }}>Тренажеры и Игры</h3>
@@ -772,160 +927,6 @@ export default function DashboardPage({
           </div>
         </div>
       </div>
-
-      {/* Заголовок списка модулей */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-      }}>
-        <h3 style={{ fontSize: '1.4rem', fontWeight: '600' }}>Мои модули</h3>
-        <button 
-          onClick={handleOpenCreateModal}
-          className="btn-neon btn-cyan"
-          style={{ padding: '10px 20px', fontSize: '0.95rem' }}
-        >
-          <Plus size={18} /> Создать модуль
-        </button>
-      </div>
-
-      {error && (
-        <div style={{
-          background: 'rgba(255, 51, 102, 0.1)',
-          border: '1px solid rgba(255, 51, 102, 0.3)',
-          color: '#ff668c',
-          padding: '16px',
-          borderRadius: '12px',
-          marginBottom: '24px'
-        }}>
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
-          Загрузка модулей...
-        </div>
-      ) : modules.length === 0 ? (
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
-          <p style={{ marginBottom: '16px' }}>У вас пока нет ни одного модуля.</p>
-          <button 
-            onClick={handleOpenCreateModal}
-            className="btn-neon btn-cyan"
-            style={{ padding: '8px 16px' }}
-          >
-            <Plus size={16} /> Создать первый модуль
-          </button>
-        </div>
-      ) : (
-        /* Сетка модулей */
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '24px'
-        }}>
-          {modules.map(module => (
-            <div key={module.id} className="glass-panel" style={{
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '240px',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              {/* Верхняя часть: Название и Меню редактирования */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <h4 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '8px', paddingRight: '40px' }}>
-                    {module.title}
-                  </h4>
-                  {/* Иконки редактирования/удаления */}
-                  <div style={{ display: 'flex', gap: '8px', position: 'absolute', top: '20px', right: '20px' }}>
-                    <button 
-                      onClick={() => handleOpenEditModal(module)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                      title="Редактировать"
-                    >
-                      <Edit size={16} className="btn-edit-hover" />
-                    </button>
-                    <button 
-                      onClick={() => handleResetProgress(module.id, module.title)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                      title="Сбросить прогресс"
-                    >
-                      <RefreshCw size={14} className="btn-edit-hover" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteModule(module.id, module.title)}
-                      style={{ background: 'none', border: 'none', color: 'var(--neon-red)', cursor: 'pointer' }}
-                      title="Удалить"
-                    >
-                      <Trash size={16} className="btn-edit-hover" />
-                    </button>
-                  </div>
-                </div>
-                <p style={{
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.85rem',
-                  lineHeight: '1.4',
-                  display: '-webkit-box',
-                  WebkitLineClamp: '2',
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  marginBottom: '16px'
-                }}>
-                  {module.description || 'Нет описания'}
-                </p>
-              </div>
-
-              {/* Нижняя часть: Прогресс и Кнопки */}
-              <div>
-                {/* Карточки и Прогресс-бар */}
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    <span>{module.totalCards} карточек</span>
-                    <span style={{ color: module.learnedPercentage > 0 ? 'var(--neon-green)' : 'var(--text-secondary)' }}>
-                      {module.learnedPercentage}% изучено
-                    </span>
-                  </div>
-                  {/* Контейнер прогресс-бара */}
-                  <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${module.learnedPercentage}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, var(--neon-cyan), var(--neon-green))',
-                      boxShadow: '0 0 8px rgba(0, 255, 136, 0.5)',
-                      borderRadius: '3px',
-                      transition: 'width 0.4s ease'
-                    }} />
-                  </div>
-                </div>
-
-                {/* Действия */}
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button 
-                    onClick={() => handleOpenStudyMode(module.id)}
-                    className="btn-neon btn-green"
-                    disabled={module.totalCards === 0}
-                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem', opacity: module.totalCards === 0 ? 0.5 : 1 }}
-                  >
-                    <BookOpen size={14} /> Учить
-                  </button>
-                  <button 
-                    onClick={() => onSelectModuleManage(module.id)}
-                    className="btn-neon btn-secondary"
-                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem' }}
-                  >
-                    <Edit size={14} /> Слова
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Модальное окно создания / редактирования */}
       {isModalOpen && (

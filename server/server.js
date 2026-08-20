@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.6.1',
-    buildHash: 'v1.6.1-sticky-back-button',
+    version: '1.6.2',
+    buildHash: 'v1.6.2-modules-first',
     serverTime: new Date().toISOString()
   });
 });
