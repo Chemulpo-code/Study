@@ -17,6 +17,9 @@ export default function MatchGamePage({ token, displayMode, onBack }) {
   
   const timerIntervalRef = useRef(null);
 
+  const [modulesList, setModulesList] = useState([]);
+  const [selectedModuleIds, setSelectedModuleIds] = useState([]);
+
   // Загружаем все карточки пользователя из всех его модулей
   useEffect(() => {
     const fetchAllCards = async () => {
@@ -27,17 +30,40 @@ export default function MatchGamePage({ token, displayMode, onBack }) {
         const modules = await response.json();
         if (!response.ok) throw new Error('Не удалось загрузить модули');
         
+        const validModules = Array.isArray(modules) ? modules : [];
+        
         // Для каждого модуля запрашиваем его карточки
-        const allCardsPromises = modules.map(async (m) => {
+        const moduleCardPairs = await Promise.all(validModules.map(async (m) => {
           const res = await fetch(`${API_BASE}/api/modules/${m.id}/cards`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          return res.ok ? await res.json() : [];
-        });
+          const cardsData = res.ok ? await res.json() : [];
+          const cardsWithModule = (Array.isArray(cardsData) ? cardsData : []).map(c => ({ ...c, moduleId: m.id }));
+          return { module: m, cards: cardsWithModule };
+        }));
         
-        const results = await Promise.all(allCardsPromises);
-        const mergedCards = results.flat();
+        const mods = moduleCardPairs.map(p => ({ id: p.module.id, title: p.module.title, count: p.cards.length }));
+        setModulesList(mods);
+
+        const mergedCards = moduleCardPairs.flatMap(p => p.cards);
         setAllCards(mergedCards);
+
+        // Загружаем выбранные модули из localStorage или выбираем все по умолчанию
+        const savedSelected = localStorage.getItem('match_game_selected_modules');
+        if (savedSelected) {
+          try {
+            const parsed = JSON.parse(savedSelected);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setSelectedModuleIds(parsed);
+            } else {
+              setSelectedModuleIds(mods.map(m => m.id));
+            }
+          } catch {
+            setSelectedModuleIds(mods.map(m => m.id));
+          }
+        } else {
+          setSelectedModuleIds(mods.map(m => m.id));
+        }
         
         // Загружаем лучшее время из localStorage
         const storedBest = localStorage.getItem('match_game_best_time');
@@ -54,12 +80,32 @@ export default function MatchGamePage({ token, displayMode, onBack }) {
     fetchAllCards();
   }, [token]);
 
+  const handleToggleModule = (id) => {
+    setSelectedModuleIds(prev => {
+      const next = prev.includes(id) ? prev.filter(mId => mId !== id) : [...prev, id];
+      localStorage.setItem('match_game_selected_modules', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleSelectAllModules = () => {
+    const allIds = modulesList.map(m => m.id);
+    setSelectedModuleIds(allIds);
+    localStorage.setItem('match_game_selected_modules', JSON.stringify(allIds));
+  };
+
+  const handleDeselectAllModules = () => {
+    setSelectedModuleIds([]);
+    localStorage.setItem('match_game_selected_modules', JSON.stringify([]));
+  };
+
   // Запуск игры
   const startNewGame = () => {
-    if (allCards.length < 8) return;
+    const playableCards = allCards.filter(c => selectedModuleIds.includes(c.moduleId));
+    if (playableCards.length < 8) return;
     
-    // Выбираем 8 случайных карточек
-    const shuffledCards = [...allCards].sort(() => Math.random() - 0.5);
+    // Выбираем 8 случайных карточек из выбранных модулей
+    const shuffledCards = [...playableCards].sort(() => Math.random() - 0.5);
     const selected = shuffledCards.slice(0, 8);
     
     // Создаем 16 парных элементов
@@ -217,18 +263,140 @@ export default function MatchGamePage({ token, displayMode, onBack }) {
 
       {!gameStarted ? (
         // Экран старта
-        <div className="glass-panel" style={{ padding: '50px 40px', borderRadius: '24px', textAlign: 'center', border: '1px solid rgba(0, 242, 254, 0.2)', boxShadow: '0 0 30px rgba(0, 242, 254, 0.05)' }}>
-          <span style={{ fontSize: '4rem', display: 'block', marginBottom: '20px' }}>🎮</span>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: '700', marginBottom: '16px', color: '#fff' }}>
+        <div className="glass-panel" style={{ padding: '40px 30px', borderRadius: '24px', textAlign: 'center', border: '1px solid rgba(0, 242, 254, 0.2)', boxShadow: '0 0 30px rgba(0, 242, 254, 0.05)' }}>
+          <span style={{ fontSize: '3.5rem', display: 'block', marginBottom: '16px' }}>🎮</span>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: '700', marginBottom: '12px', color: '#fff' }}>
             Игра «Найди пару» (Match Game)
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.6', maxWidth: '500px', margin: '0 auto 32px auto' }}>
-            На поле будут разложены 8 китайских иероглифов и 8 соответствующих им переводов на русский язык.
-            Ваша задача — как можно быстрее сопоставить пары. Готовы проверить зрительную память?
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', maxWidth: '540px', margin: '0 auto 24px auto' }}>
+            Сопоставьте 8 китайских иероглифов с их переводами на скорость. Выберите модули, из которых будут формироваться слова:
           </p>
-          <button onClick={startNewGame} className="btn-neon btn-cyan" style={{ padding: '14px 40px', fontSize: '1.1rem', fontWeight: '700' }}>
-            Начать игру
-          </button>
+
+          {/* Блок выбора модулей */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '18px',
+            padding: '20px',
+            marginBottom: '24px',
+            textAlign: 'left'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <span style={{ fontWeight: '600', color: '#fff', fontSize: '0.95rem' }}>
+                📚 Выберите модули ({selectedModuleIds.length} из {modulesList.length})
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleSelectAllModules}
+                  style={{
+                    background: 'rgba(0, 242, 254, 0.1)',
+                    border: '1px solid rgba(0, 242, 254, 0.3)',
+                    color: 'var(--neon-cyan)',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  ✓ Выбрать все
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeselectAllModules}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: 'var(--text-secondary)',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Снять все
+                </button>
+              </div>
+            </div>
+
+            {/* Сетка модулей с чекбоксами */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: '10px',
+              maxHeight: '220px',
+              overflowY: 'auto',
+              paddingRight: '4px'
+            }}>
+              {modulesList.map(mod => {
+                const isSelected = selectedModuleIds.includes(mod.id);
+                return (
+                  <div
+                    key={mod.id}
+                    onClick={() => handleToggleModule(mod.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      background: isSelected ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${isSelected ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255, 255, 255, 0.06)'}`,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      style={{ cursor: 'pointer', accentColor: 'var(--neon-cyan)' }}
+                    />
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: isSelected ? '600' : '400', color: isSelected ? '#fff' : 'var(--text-secondary)' }}>
+                        {mod.title}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: isSelected ? 'var(--neon-cyan)' : 'rgba(255, 255, 255, 0.4)' }}>
+                        {mod.count} слов
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Проверка минимального количества слов */}
+          {(() => {
+            const playableCards = allCards.filter(c => selectedModuleIds.includes(c.moduleId));
+            const isValid = playableCards.length >= 8;
+
+            return (
+              <div>
+                <div style={{ marginBottom: '16px', fontSize: '0.85rem', color: isValid ? 'var(--neon-green)' : '#ff668c' }}>
+                  {isValid
+                    ? `Всего слов в выбранных модулях: ${playableCards.length}`
+                    : `⚠️ Выбрано мало слов (${playableCards.length} из 8 необходимых). Отметьте еще модули!`}
+                </div>
+
+                <button
+                  onClick={startNewGame}
+                  disabled={!isValid}
+                  className="btn-neon btn-cyan"
+                  style={{
+                    padding: '14px 40px',
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    opacity: isValid ? 1 : 0.4,
+                    cursor: isValid ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  Начать игру
+                </button>
+              </div>
+            );
+          })()}
         </div>
       ) : gameCompleted ? (
         // Экран победы

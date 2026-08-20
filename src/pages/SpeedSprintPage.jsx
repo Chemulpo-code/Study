@@ -17,6 +17,9 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
   const [timeLeft, setTimeLeft] = useState(100); // % полосы времени (100% -> 0%)
   const [bestScore, setBestScore] = useState(0);
 
+  const [modulesList, setModulesList] = useState([]);
+  const [selectedModuleIds, setSelectedModuleIds] = useState([]);
+
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -26,17 +29,39 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const modules = await resModules.json();
+        const validModules = Array.isArray(modules) ? modules : [];
         
-        const cardPromises = modules.map(async (m) => {
+        const moduleCardPairs = await Promise.all(validModules.map(async (m) => {
           const res = await fetch(`${API_BASE}/api/modules/${m.id}/cards`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          return res.ok ? await res.json() : [];
-        });
+          const cardsData = res.ok ? await res.json() : [];
+          const cardsWithModule = (Array.isArray(cardsData) ? cardsData : []).map(c => ({ ...c, moduleId: m.id }));
+          return { module: m, cards: cardsWithModule };
+        }));
         
-        const results = await Promise.all(cardPromises);
-        const merged = results.flat();
+        const mods = moduleCardPairs.map(p => ({ id: p.module.id, title: p.module.title, count: p.cards.length }));
+        setModulesList(mods);
+
+        const merged = moduleCardPairs.flatMap(p => p.cards);
         setAllCards(merged);
+
+        // Загружаем сохраненные выбранные модули для спринта
+        const savedSelected = localStorage.getItem('sprint_selected_modules');
+        if (savedSelected) {
+          try {
+            const parsed = JSON.parse(savedSelected);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setSelectedModuleIds(parsed);
+            } else {
+              setSelectedModuleIds(mods.map(m => m.id));
+            }
+          } catch {
+            setSelectedModuleIds(mods.map(m => m.id));
+          }
+        } else {
+          setSelectedModuleIds(mods.map(m => m.id));
+        }
 
         const savedBest = localStorage.getItem('sprint_best_score');
         if (savedBest) setBestScore(parseInt(savedBest, 10));
@@ -50,14 +75,34 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
     fetchCards();
   }, [token]);
 
+  const handleToggleModule = (id) => {
+    setSelectedModuleIds(prev => {
+      const next = prev.includes(id) ? prev.filter(mId => mId !== id) : [...prev, id];
+      localStorage.setItem('sprint_selected_modules', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const handleSelectAllModules = () => {
+    const allIds = modulesList.map(m => m.id);
+    setSelectedModuleIds(allIds);
+    localStorage.setItem('sprint_selected_modules', JSON.stringify(allIds));
+  };
+
+  const handleDeselectAllModules = () => {
+    setSelectedModuleIds([]);
+    localStorage.setItem('sprint_selected_modules', JSON.stringify([]));
+  };
+
   const startGame = () => {
-    if (allCards.length < 4) return;
+    const playableCards = allCards.filter(c => selectedModuleIds.includes(c.moduleId));
+    if (playableCards.length < 4) return;
     setScore(0);
     setCombo(0);
     setLives(3);
     setGameOver(false);
     setGameStarted(true);
-    nextQuestion(allCards, 0, 3);
+    nextQuestion(playableCards, 0, 3);
   };
 
   const nextQuestion = (cardsList, currentScore, currentLives) => {
@@ -185,15 +230,138 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
       </div>
 
       {!gameStarted && !gameOver && (
-        <div className="glass-panel" style={{ padding: '50px 30px', borderRadius: '24px', textAlign: 'center' }}>
-          <span style={{ fontSize: '4rem', display: 'block', marginBottom: '16px' }}>🚀</span>
-          <h2 style={{ fontSize: '1.8rem', color: '#fff', marginBottom: '16px' }}>Неоновый Спринт</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '480px', margin: '0 auto 32px auto', lineHeight: '1.6' }}>
-            Успевайте выбирать правильный перевод, пока убывает полоса времени! Каждые 3 правильных ответа подряд увеличивают множитель очков. У вас 3 жизни.
+        <div className="glass-panel" style={{ padding: '40px 30px', borderRadius: '24px', textAlign: 'center' }}>
+          <span style={{ fontSize: '3.5rem', display: 'block', marginBottom: '16px' }}>🚀</span>
+          <h2 style={{ fontSize: '1.8rem', color: '#fff', marginBottom: '12px' }}>Неоновый Спринт</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', maxWidth: '520px', margin: '0 auto 24px auto', lineHeight: '1.5' }}>
+            Успевайте выбирать правильный перевод на скорость! Выберите модули, слова из которых будут использоваться в спринте:
           </p>
-          <button onClick={startGame} className="btn-neon btn-cyan" style={{ padding: '14px 40px', fontSize: '1.1rem', fontWeight: '700' }}>
-            Старт Спринта
-          </button>
+
+          {/* Блок выбора модулей */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '18px',
+            padding: '20px',
+            marginBottom: '24px',
+            textAlign: 'left'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <span style={{ fontWeight: '600', color: '#fff', fontSize: '0.95rem' }}>
+                📚 Выберите модули ({selectedModuleIds.length} из {modulesList.length})
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleSelectAllModules}
+                  style={{
+                    background: 'rgba(0, 242, 254, 0.1)',
+                    border: '1px solid rgba(0, 242, 254, 0.3)',
+                    color: 'var(--neon-cyan)',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                  }}
+                >
+                  ✓ Выбрать все
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeselectAllModules}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: 'var(--text-secondary)',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Снять все
+                </button>
+              </div>
+            </div>
+
+            {/* Сетка модулей с чекбоксами */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+              gap: '10px',
+              maxHeight: '220px',
+              overflowY: 'auto',
+              paddingRight: '4px'
+            }}>
+              {modulesList.map(mod => {
+                const isSelected = selectedModuleIds.includes(mod.id);
+                return (
+                  <div
+                    key={mod.id}
+                    onClick={() => handleToggleModule(mod.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      background: isSelected ? 'rgba(0, 242, 254, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                      border: `1px solid ${isSelected ? 'rgba(0, 242, 254, 0.4)' : 'rgba(255, 255, 255, 0.06)'}`,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      style={{ cursor: 'pointer', accentColor: 'var(--neon-cyan)' }}
+                    />
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: isSelected ? '600' : '400', color: isSelected ? '#fff' : 'var(--text-secondary)' }}>
+                        {mod.title}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: isSelected ? 'var(--neon-cyan)' : 'rgba(255, 255, 255, 0.4)' }}>
+                        {mod.count} слов
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Валидация общего кол-ва слов */}
+          {(() => {
+            const playableCards = allCards.filter(c => selectedModuleIds.includes(c.moduleId));
+            const isValid = playableCards.length >= 4;
+
+            return (
+              <div>
+                <div style={{ marginBottom: '16px', fontSize: '0.85rem', color: isValid ? 'var(--neon-green)' : '#ff668c' }}>
+                  {isValid
+                    ? `Всего слов в выбранных модулях: ${playableCards.length}`
+                    : `⚠️ Выбрано мало слов (${playableCards.length} из 4 необходимых). Отметьте еще модули!`}
+                </div>
+
+                <button
+                  onClick={startGame}
+                  disabled={!isValid}
+                  className="btn-neon btn-cyan"
+                  style={{
+                    padding: '14px 40px',
+                    fontSize: '1.1rem',
+                    fontWeight: '700',
+                    opacity: isValid ? 1 : 0.4,
+                    cursor: isValid ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  Старт Спринта
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
