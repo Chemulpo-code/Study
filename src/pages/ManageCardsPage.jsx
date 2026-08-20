@@ -208,28 +208,45 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 20px 110px 20px' }}>
-      {/* Шапка страницы */}
+      {/* Прикрепленная верхняя панель навигации */}
       <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 40,
+        background: 'rgba(10, 14, 23, 0.88)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        padding: '16px 20px',
+        margin: '-32px -20px 24px -20px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: '28px',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '16px',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button 
             onClick={handleBack}
             className="btn-neon btn-secondary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+            style={{ 
+              padding: '8px 16px', 
+              fontSize: '0.85rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
           >
             <ArrowLeft size={16} /> Назад
           </button>
           <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: '600' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>
               Модуль: <span style={{ color: 'var(--neon-cyan)' }}>{module?.title}</span>
             </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Управление словами и предложениями</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '2px 0 0 0' }}>
+              Всего слов: {cards.length}
+            </p>
           </div>
         </div>
       </div>
