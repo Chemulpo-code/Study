@@ -49,7 +49,6 @@ export default function DashboardPage({
       if (!response.ok) throw new Error(data.error || 'Ошибка при импорте');
       showToast('Модули HSK 1 успешно импортированы!', 'success');
       fetchModules();
-      fetchStats();
     } catch (err) {
       showToast(err.message, 'error');
     } finally {
@@ -79,22 +78,6 @@ export default function DashboardPage({
     }
   };
 
-  const [stats, setStats] = useState({ boxCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, activity: {} });
-
-  const fetchStats = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setStats(data);
-      }
-    } catch (err) {
-      console.error('Ошибка загрузки статистики:', err);
-    }
-  };
-
   const fetchServerVersion = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/version`);
@@ -111,7 +94,6 @@ export default function DashboardPage({
 
   useEffect(() => {
     fetchModules();
-    fetchStats();
     fetchServerVersion();
   }, []);
 
@@ -199,7 +181,6 @@ export default function DashboardPage({
       if (!response.ok) throw new Error(data.error || 'Ошибка при сбросе прогресса');
       showToast('Прогресс модуля сброшен', 'info');
       fetchModules();
-      fetchStats();
     } catch (err) {
       showToast(err.message, 'error');
     }
@@ -217,76 +198,9 @@ export default function DashboardPage({
       if (!response.ok) throw new Error(data.error || 'Ошибка при сбросе прогресса');
       showToast('Весь прогресс изучения успешно сброшен', 'info');
       fetchModules();
-      fetchStats();
     } catch (err) {
       showToast(err.message, 'error');
     }
-  };
-
-  const renderActivityCalendar = () => {
-    const cells = [];
-    const today = new Date();
-    
-    // Сдвигаемся на 83 дня назад (12 недель * 7 дней - 1)
-    const startDate = new Date();
-    startDate.setDate(today.getDate() - 83);
-    
-    // Генерируем 84 ячейки (ровно 12 недель по 7 дней)
-    for (let i = 0; i < 84; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
-      const dateStr = currentDate.toISOString().split('T')[0];
-      const count = stats.activity[dateStr] || 0;
-      
-      let bg = 'rgba(255, 255, 255, 0.03)';
-      let border = '1px solid rgba(255, 255, 255, 0.05)';
-      let shadow = 'none';
-      
-      if (count > 0 && count <= 2) {
-        bg = 'rgba(0, 242, 254, 0.2)';
-        border = '1px solid rgba(0, 242, 254, 0.4)';
-      } else if (count > 2 && count <= 5) {
-        bg = 'rgba(0, 242, 254, 0.5)';
-        border = '1px solid rgba(0, 242, 254, 0.7)';
-        shadow = '0 0 8px rgba(0, 242, 254, 0.3)';
-      } else if (count > 5) {
-        bg = 'rgba(0, 242, 254, 0.8)';
-        border = '1px solid #00f2fe';
-        shadow = '0 0 12px rgba(0, 242, 254, 0.6)';
-      }
-      
-      cells.push(
-        <div 
-          key={i} 
-          style={{
-            width: '12px',
-            height: '12px',
-            borderRadius: '3px',
-            background: bg,
-            border: border,
-            boxShadow: shadow,
-            transition: 'all 0.2s ease'
-          }}
-          title={`${dateStr}: изучено ${count} слов`}
-        />
-      );
-    }
-    
-    return (
-      <div className="mobile-scroll-x" style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(12, 12px)',
-          gridTemplateRows: 'repeat(7, 12px)',
-          gridAutoFlow: 'column',
-          gap: '4px',
-          justifyContent: 'center',
-          padding: '10px 0'
-        }}>
-          {cells}
-        </div>
-      </div>
-    );
   };
 
   // Расчет общей статистики
@@ -450,38 +364,7 @@ export default function DashboardPage({
         </div>
       </div>
 
-      {/* Секция Календаря активности */}
-      <div style={{ marginBottom: '40px' }}>
-        {/* Панель календаря активности */}
-        <div className="glass-panel" style={{ padding: '24px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '6px', color: '#fff' }}>
-              📅 Календарь активности
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '16px' }}>
-              История изученных карточек за последние 12 недель
-            </p>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, overflowX: 'auto', paddingBottom: '8px' }}>
-            {renderActivityCalendar()}
-          </div>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '12px',
-            fontSize: '0.75rem',
-            color: 'var(--text-secondary)',
-            marginTop: '10px'
-          }}>
-            <span>Меньше</span>
-            <div style={{ width: '10px', height: '10px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '2px' }} />
-            <div style={{ width: '10px', height: '10px', background: 'rgba(0, 242, 254, 0.2)', borderRadius: '2px' }} />
-            <div style={{ width: '10px', height: '10px', background: 'rgba(0, 242, 254, 0.5)', borderRadius: '2px' }} />
-            <div style={{ width: '10px', height: '10px', background: 'rgba(0, 242, 254, 0.8)', borderRadius: '2px', boxShadow: '0 0 5px rgba(0, 242, 254, 0.5)' }} />
-            <span>Больше</span>
-          </div>
-        </div>
-      </div>
+
 
       {/* Заголовок списка модулей */}
       <div style={{
