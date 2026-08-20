@@ -289,63 +289,6 @@ export default function DashboardPage({
     );
   };
 
-  const renderLeitnerProgress = () => {
-    const boxColors = {
-      1: 'rgba(255, 51, 102, 0.85)',   // Коробка 1: Красный (сложные/новые)
-      2: 'rgba(255, 153, 0, 0.85)',   // Коробка 2: Оранжевый
-      3: 'rgba(255, 204, 0, 0.85)',   // Коробка 3: Желтый
-      4: 'rgba(157, 78, 221, 0.85)',  // Коробка 4: Фиолетовый
-      5: 'rgba(0, 255, 136, 0.85)'    // Коробка 5: Зеленый (выучено)
-    };
-    
-    const boxShadows = {
-      1: '0 0 10px rgba(255, 51, 102, 0.3)',
-      2: '0 0 10px rgba(255, 153, 0, 0.3)',
-      3: '0 0 10px rgba(255, 204, 0, 0.3)',
-      4: '0 0 10px rgba(157, 78, 221, 0.3)',
-      5: '0 0 10px rgba(0, 255, 136, 0.3)'
-    };
-
-    const maxCount = Math.max(...Object.values(stats.boxCounts), 1);
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {[1, 2, 3, 4, 5].map(boxNum => {
-          const count = stats.boxCounts[boxNum] || 0;
-          const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
-          return (
-            <div key={boxNum} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '0.8rem', width: '70px', textAlign: 'left', color: 'var(--text-secondary)' }}>
-                Коробка {boxNum}
-              </span>
-              <div style={{
-                flex: 1,
-                height: '14px',
-                background: 'rgba(255, 255, 255, 0.02)',
-                borderRadius: '7px',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                overflow: 'hidden',
-                position: 'relative'
-              }}>
-                <div style={{
-                  width: `${percentage}%`,
-                  height: '100%',
-                  background: boxColors[boxNum],
-                  boxShadow: boxShadows[boxNum],
-                  borderRadius: '7px',
-                  transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-                }} />
-              </div>
-              <span style={{ fontSize: '0.85rem', width: '30px', textAlign: 'right', fontWeight: '600', color: '#fff' }}>
-                {count}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   // Расчет общей статистики
   const totalModules = modules.length;
   const totalCards = modules.reduce((acc, curr) => acc + (curr.totalCards || 0), 0);
@@ -507,21 +450,8 @@ export default function DashboardPage({
         </div>
       </div>
 
-      {/* Секция детальной аналитики */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: '20px',
-        marginBottom: '40px'
-      }}>
-        {/* Панель коробок Лейтнера */}
-        <div className="glass-panel" style={{ padding: '24px 30px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '20px', color: '#fff' }}>
-            📦 Распределение по коробкам Лейтнера
-          </h3>
-          {renderLeitnerProgress()}
-        </div>
-
+      {/* Секция Календаря активности */}
+      <div style={{ marginBottom: '40px' }}>
         {/* Панель календаря активности */}
         <div className="glass-panel" style={{ padding: '24px 30px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
@@ -532,7 +462,7 @@ export default function DashboardPage({
               История изученных карточек за последние 12 недель
             </p>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, overflowX: 'auto', paddingBottom: '8px' }}>
             {renderActivityCalendar()}
           </div>
           <div style={{
