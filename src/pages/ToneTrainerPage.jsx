@@ -120,14 +120,6 @@ export default function ToneTrainerPage({ onBack }) {
     });
   };
 
-  // Автопроигрывание звука при смене вопроса
-  useEffect(() => {
-    if (currentQuestion && !gameCompleted) {
-      setTimeout(() => {
-        playSound(currentQuestion.syllable, currentQuestion.correctTone);
-      }, 400);
-    }
-  }, [currentQuestion, gameCompleted]);
 
   const handleSelectTone = (tone) => {
     if (isAnswered) return;
