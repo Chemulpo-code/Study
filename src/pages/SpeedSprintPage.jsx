@@ -156,6 +156,8 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
   const handleSelectOption = (opt) => {
     if (timerRef.current) clearInterval(timerRef.current);
 
+    const playableCards = allCards.filter(c => selectedModuleIds.includes(c.moduleId));
+
     if (opt.id === currentCard.id) {
       // ПРАВИЛЬНО
       const multiplier = Math.min(Math.floor(combo / 3) + 1, 4);
@@ -171,7 +173,7 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
         localStorage.setItem('sprint_best_score', newScore.toString());
       }
 
-      nextQuestion(allCards, newScore, lives);
+      nextQuestion(playableCards, newScore, lives);
     } else {
       // НЕПРАВИЛЬНО
       const newLives = lives - 1;
@@ -181,7 +183,7 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
       if (newLives <= 0) {
         endGame(score);
       } else {
-        nextQuestion(allCards, score, newLives);
+        nextQuestion(playableCards, score, newLives);
       }
     }
   };
