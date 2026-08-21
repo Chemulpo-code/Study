@@ -10,27 +10,6 @@ export default function AudioPlayer({ text, className = '' }) {
     setIsSlowNext(false);
   }, [text]);
 
-  // Предзагрузка звука в фоновый кэш при появлении текста для 0ms задержки клика!
-  useEffect(() => {
-    if (!text || !text.trim()) return;
-
-    const normalUrl = `${API_BASE}/api/tts?text=${encodeURIComponent(text)}&rate=normal`;
-    const slowUrl = `${API_BASE}/api/tts?text=${encodeURIComponent(text)}&rate=slow`;
-
-    const audioNormal = new Audio(normalUrl);
-    audioNormal.preload = 'auto';
-    preloadedAudioRef.current = audioNormal;
-
-    const audioSlow = new Audio(slowUrl);
-    audioSlow.preload = 'auto';
-
-    return () => {
-      if (preloadedAudioRef.current) {
-        try { preloadedAudioRef.current.pause(); } catch (e) {}
-      }
-    };
-  }, [text]);
-
   const speak = (e) => {
     e.stopPropagation(); // Предотвращаем переворот карточки
 
@@ -64,13 +43,7 @@ export default function AudioPlayer({ text, className = '' }) {
       }
     };
 
-    // Используем предзагруженное аудио для мгновенного старта
-    let audioToPlay;
-    if (!isSlowNext && preloadedAudioRef.current) {
-      audioToPlay = preloadedAudioRef.current;
-    } else {
-      audioToPlay = new Audio(url);
-    }
+    const audioToPlay = new Audio(url);
     window.activeAudio = audioToPlay;
 
     // Если сеть задерживается более 250мс, стартует нативное произношение браузера!
