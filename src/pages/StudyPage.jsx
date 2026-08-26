@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Check, X, RefreshCw } from '../components/Icons';
 import AudioPlayer from '../components/AudioPlayer';
+import { deconstructCharacter } from '../utils/radicalsData';
 import WritingTrainer from '../components/WritingTrainer';
 import { API_BASE } from '../config';
 import { useToast } from '../components/Toast';
@@ -232,6 +233,46 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
 
     setIsFlipped(false);
     
+    setTimeout(() => {
+      if (currentIndex < cards.length - 1) {
+        setCurrentIndex(prev => prev + 1);
+      } else {
+        setSessionCompleted(true);
+      }
+    }, 250);
+  };
+
+  const handleSm2Answer = async (rating) => {
+    const card = cards[currentIndex];
+    if (!card) return;
+
+    try {
+      if (!navigator.onLine) {
+        queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
+        showToast('Прогресс сохранен офлайн 📶', 'info');
+      } else {
+        const response = await fetch(`${API_BASE}/api/progress/sm2`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            cardId: card.id,
+            rating
+          })
+        });
+
+        if (!response.ok) {
+          queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
+        }
+      }
+    } catch (err) {
+      queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
+    }
+
+    setIsFlipped(false);
+
     setTimeout(() => {
       if (currentIndex < cards.length - 1) {
         setCurrentIndex(prev => prev + 1);
@@ -577,6 +618,40 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                       }}>
                         {currentCard.translation}
                       </div>
+
+                      {/* Разбор ключей и мнемоника */}
+                      {(() => {
+                        const radicals = deconstructCharacter(currentCard.characters);
+                        if (radicals.length === 0 && !currentCard.mnemonic) return null;
+                        return (
+                          <div style={{
+                            marginTop: '12px',
+                            background: 'rgba(0, 242, 254, 0.05)',
+                            border: '1px solid rgba(0, 242, 254, 0.15)',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                            maxWidth: '95%',
+                            fontSize: '0.8rem',
+                            textAlign: 'left'
+                          }}>
+                            {radicals.length > 0 && (
+                              <div style={{ marginBottom: currentCard.mnemonic ? '6px' : '0' }}>
+                                <span style={{ color: 'var(--neon-cyan)', fontWeight: '700' }}>🧱 Ключи: </span>
+                                {radicals.map((r, i) => (
+                                  <span key={i} style={{ color: '#fff', marginRight: '8px' }}>
+                                    <strong>{r.char}</strong> ({r.name})
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {currentCard.mnemonic && (
+                              <div style={{ color: '#ffcc00' }}>
+                                💡 <strong>Мнемоника:</strong> {currentCard.mnemonic}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Блок с примерами */}
@@ -613,31 +688,72 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                 </div>
               </div>
 
-              {/* Кнопки оценки знаний */}
+              {/* Кнопки оценки знаний (4 кнопки для SM-2 или 2 для обычного) */}
               <div style={{
                 display: 'flex',
-                gap: '20px',
-                marginTop: '40px',
+                gap: '10px',
+                marginTop: '32px',
                 justifyContent: 'center',
-                height: '60px',
                 visibility: isFlipped ? 'visible' : 'hidden',
                 opacity: isFlipped ? 1 : 0,
                 transition: 'opacity 0.2s ease, visibility 0.2s'
               }}>
-                <button 
-                  onClick={() => handleAnswer(false)}
-                  className="btn-neon btn-red"
-                  style={{ flex: 1, padding: '12px 24px', fontSize: '1rem', fontWeight: '600' }}
-                >
-                  <X size={20} /> Не помню
-                </button>
-                <button 
-                  onClick={() => handleAnswer(true)}
-                  className="btn-neon btn-green"
-                  style={{ flex: 1, padding: '12px 24px', fontSize: '1rem', fontWeight: '600' }}
-                >
-                  <Check size={20} /> Помню
-                </button>
+                {isSpaced ? (
+                  <>
+                    <button 
+                      onClick={() => handleSm2Answer(1)}
+                      className="btn-neon btn-red"
+                      style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px' }}
+                    >
+                      <span>🔴 Снова</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+1 мин</span>
+                    </button>
+
+                    <button 
+                      onClick={() => handleSm2Answer(2)}
+                      className="btn-neon btn-secondary"
+                      style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px', border: '1px solid #ffaa00', color: '#ffaa00' }}
+                    >
+                      <span>🟡 Трудно</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{Math.max(1, Math.round((currentCard.interval || 1) * 1.2))} дн</span>
+                    </button>
+
+                    <button 
+                      onClick={() => handleSm2Answer(3)}
+                      className="btn-neon btn-green"
+                      style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px' }}
+                    >
+                      <span>🟢 Хорошо</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{currentCard.interval ? Math.round(currentCard.interval * (currentCard.easeFactor || 2.5)) : 1} дн</span>
+                    </button>
+
+                    <button 
+                      onClick={() => handleSm2Answer(4)}
+                      className="btn-neon btn-cyan"
+                      style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px' }}
+                    >
+                      <span>🔵 Легко</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{currentCard.interval ? Math.round(currentCard.interval * (currentCard.easeFactor || 2.5) * 1.3) : 4} дн</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => handleAnswer(false)}
+                      className="btn-neon btn-red"
+                      style={{ flex: 1, padding: '12px 24px', fontSize: '1rem', fontWeight: '600' }}
+                    >
+                      <X size={20} /> Не помню
+                    </button>
+                    <button 
+                      onClick={() => handleAnswer(true)}
+                      className="btn-neon btn-green"
+                      style={{ flex: 1, padding: '12px 24px', fontSize: '1rem', fontWeight: '600' }}
+                    >
+                      <Check size={20} /> Помню
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Панель тренировки письма */}

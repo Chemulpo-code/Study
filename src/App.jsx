@@ -10,6 +10,8 @@ import MatchGamePage from './pages/MatchGamePage';
 import SpeedSprintPage from './pages/SpeedSprintPage';
 import SentenceBuilderPage from './pages/SentenceBuilderPage';
 import FillInBlankPage from './pages/FillInBlankPage';
+import HandsFreeAudioPage from './pages/HandsFreeAudioPage';
+import ContextDialoguesPage from './pages/ContextDialoguesPage';
 import { useToast } from './components/Toast';
 import { syncOfflineProgressBatch } from './utils/offlineStorage';
 
@@ -18,6 +20,7 @@ export default function App() {
   const [token, setToken] = useState(localStorage.getItem('study_token') || '');
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [modulesList, setModulesList] = useState([]);
   
   // Автоматическая синхронизация офлайн-прогресса при появлении интернета
   useEffect(() => {
@@ -34,6 +37,17 @@ export default function App() {
     }
 
     return () => window.removeEventListener('online', handleOnline);
+  }, [token]);
+
+  useEffect(() => {
+    if (token) {
+      fetch(`${API_BASE}/api/modules`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setModulesList(data); })
+      .catch(() => {});
+    }
   }, [token]);
   
   // Навигация с сохранением в localStorage
@@ -201,6 +215,14 @@ export default function App() {
     return <FillInBlankPage token={token} displayMode={displayMode} onBack={handleBackToDashboard} />;
   }
 
+  if (currentPage === 'hands-free') {
+    return <HandsFreeAudioPage token={token} modules={modulesList} onBack={handleBackToDashboard} />;
+  }
+
+  if (currentPage === 'dialogues') {
+    return <ContextDialoguesPage token={token} modules={modulesList} onBack={handleBackToDashboard} />;
+  }
+
   return (
     <DashboardPage 
       user={user} 
@@ -222,6 +244,8 @@ export default function App() {
       onGoToSentenceBuilder={() => changePage('sentence-builder')}
       onOpenFillBlank={() => changePage('fill-blank')}
       onGoToFillInBlank={() => changePage('fill-blank')}
+      onSelectHandsFree={() => changePage('hands-free')}
+      onSelectDialogues={() => changePage('dialogues')}
     />
   );
 }

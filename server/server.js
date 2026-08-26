@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.8.3',
-    buildHash: 'v1.8.3-strictly-manual-audio',
+    version: '1.9.0',
+    buildHash: 'v1.9.0-5-super-learning-features',
     serverTime: new Date().toISOString()
   });
 });
@@ -456,6 +456,7 @@ app.post('/api/modules/:moduleId/cards', authenticateToken, async (req, res) => 
     return res.status(403).json({ error: 'Нет доступа к этому модулю.' });
   }
 
+  const { characters, pinyin, translation, examples, mnemonic } = req.body;
   if (!characters || !translation) {
     return res.status(400).json({ error: 'Иероглифы и перевод обязательны для заполнения.' });
   }
@@ -470,13 +471,13 @@ app.post('/api/modules/:moduleId/cards', authenticateToken, async (req, res) => 
     }
   }
 
-  const card = db.createCard(req.params.moduleId, characters, finalPinyin, translation, finalExamples);
+  const card = db.createCard(req.params.moduleId, characters, finalPinyin, translation, finalExamples, mnemonic || '');
   res.status(201).json({ ...card, status: 'new' });
 });
 
 // Редактировать карточку
 app.put('/api/cards/:id', authenticateToken, async (req, res) => {
-  const { characters, pinyin, translation, examples } = req.body;
+  const { characters, pinyin, translation, examples, mnemonic } = req.body;
   const card = db.getCardById(req.params.id);
   if (!card) {
     return res.status(404).json({ error: 'Карточка не найдена.' });
@@ -498,7 +499,7 @@ app.put('/api/cards/:id', authenticateToken, async (req, res) => {
     }
   }
 
-  const updatedCard = db.updateCard(req.params.id, characters, finalPinyin, translation, finalExamples);
+  const updatedCard = db.updateCard(req.params.id, characters, finalPinyin, translation, finalExamples, mnemonic);
   res.json(updatedCard);
 });
 
@@ -520,6 +521,91 @@ app.delete('/api/cards/:id', authenticateToken, (req, res) => {
 
 
 // --- Роуты Прогресса ---
+
+// Сохранить прогресс карточки по SM-2 (рейтинги 1-4)
+app.post('/api/progress/sm2', authenticateToken, (req, res) => {
+  const { cardId, rating } = req.body;
+  if (!cardId || ![1, 2, 3, 4].includes(Number(rating))) {
+    return res.status(400).json({ error: 'Укажите верный cardId и rating (1, 2, 3 или 4).' });
+  }
+
+  const card = db.getCardById(cardId);
+  if (!card) {
+    return res.status(404).json({ error: 'Карточка не найдена.' });
+  }
+
+  const progress = db.saveSm2Progress(req.user.id, cardId, Number(rating));
+  res.json(progress);
+});
+
+// Логирование ошибки по карточке из викторин / спринта
+app.post('/api/progress/log-error', authenticateToken, (req, res) => {
+  const { cardId } = req.body;
+  if (!cardId) {
+    return res.status(400).json({ error: 'Укажите cardId.' });
+  }
+
+  db.logCardError(req.user.id, cardId);
+  res.json({ message: 'Ошибка зафиксирована' });
+});
+
+// Виртуальный модуль «Работа над ошибками»
+app.get('/api/modules/error-box', authenticateToken, (req, res) => {
+  const errorCards = db.getErrorCards(req.user.id, 7);
+  res.json({
+    id: 'error-box',
+    title: '❌ Работа над ошибками',
+    description: 'Слова и фразы, в которых вы ошибались за последние 7 дней',
+    totalCards: errorCards.length,
+    knownCards: 0,
+    learnedPercentage: 0,
+    isVirtual: true,
+    cards: errorCards
+  });
+});
+
+// Генерируемые микро-диалоги для модуля
+app.get('/api/modules/:id/dialogues', authenticateToken, (req, res) => {
+  const cards = db.getCardsByModule(req.params.id);
+  const module = db.getModuleById(req.params.id);
+
+  if (!module) {
+    return res.status(404).json({ error: 'Модуль не найден.' });
+  }
+
+  // Создаем 2-3 диалоговых сценария на основе слов модуля
+  const sampleWords = cards.map(c => c.characters).slice(0, 6);
+  const word1 = sampleWords[0] || '你好';
+  const word2 = sampleWords[1] || '谢谢';
+  const word3 = sampleWords[2] || '再见';
+
+  const dialogues = [
+    {
+      id: 'dialogue-1',
+      title: `Диалог 1: Знакомство и общение (${module.title})`,
+      scenario: 'Разговор двух знакомых при встрече',
+      lines: [
+        { speaker: 'A', chinese: `${word1}！很高兴认识你。`, pinyin: `${word1}! Hěn gāoxìng rènshí nǐ.`, translation: `Привет! Очень рад познакомиться.` },
+        { speaker: 'B', chinese: `我也很高兴。${word2}！`, pinyin: `Wǒ yě hěn gāoxìng. ${word2}!`, translation: `Я тоже рад. Спасибо!` },
+        { speaker: 'A', chinese: `今天天气很好，你想去哪里？`, pinyin: `Jīntiān tiānqì hěn hǎo, nǐ xiǎng qù nǎlǐ?`, translation: `Сегодня отличная погода, куда ты хочешь пойти?` },
+        { speaker: 'B', chinese: `我们一起去咖啡馆吧！${word3}！`, pinyin: `Wǒmen yīqǐ qù kāfēiguǎn ba! ${word3}!`, translation: `Подем вместе в кафе! До свидания!` }
+      ]
+    },
+    {
+      id: 'dialogue-2',
+      title: `Диалог 2: Покупка и заказ (${module.title})`,
+      scenario: 'Разговор покупателя и продавца',
+      lines: [
+        { speaker: 'Покупатель', chinese: `请问，这个多少钱？${word1}`, pinyin: `Qǐngwèn, zhège duōshǎo qián? ${word1}`, translation: `Скажите, пожалуйста, сколько это стоит?` },
+        { speaker: 'Продавец', chinese: `这个二十块钱，非常便宜。`, pinyin: `Zhège èrshí kuài qián, fēicháng piányi.`, translation: `Это стоит 20 юаней, очень дешево.` },
+        { speaker: 'Покупатель', chinese: `好的，给我一个。${word2}！`, pinyin: `Hǎo de, gěi wǒ yī gè. ${word2}!`, translation: `Хорошо, дайте мне один. Спасибо!` },
+        { speaker: 'Продавец', chinese: `不客气，欢迎下次再来！${word3}`, pinyin: `Bù kèqì, huānyíng xià cì zài lái! ${word3}`, translation: `Пожалуйста, приходите еще!` }
+      ]
+    }
+  ];
+
+  res.json(dialogues);
+});
 
 // Сохранить прогресс карточки ("Знаю" / "Не знаю")
 app.post('/api/progress', authenticateToken, (req, res) => {

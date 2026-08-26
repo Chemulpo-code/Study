@@ -11,7 +11,8 @@ export default function DashboardPage({
   onGoToMatchGame, onOpenMatchGame,
   onGoToSpeedSprint, onOpenSpeedSprint,
   onGoToSentenceBuilder, onOpenSentenceBuilder,
-  onGoToFillInBlank, onOpenFillBlank
+  onGoToFillInBlank, onOpenFillBlank,
+  onSelectHandsFree, onSelectDialogues
 }) {
   const { showToast } = useToast();
   const handleOpenPinyinChart = onGoToPinyinChart || onOpenPinyinChart;
@@ -56,7 +57,7 @@ export default function DashboardPage({
     }
   };
 
-  // Загрузка модулей с поддержкой офлайн-кэша
+  // Загрузка модулей с поддержкой офлайн-кэша и виртуального модуля ошибок
   const fetchModules = async () => {
     try {
       const response = await fetch(`${API_BASE}/api/modules`, {
@@ -64,7 +65,22 @@ export default function DashboardPage({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при загрузке модулей');
-      setModules(data);
+
+      let combinedModules = [...data];
+
+      try {
+        const errBoxRes = await fetch(`${API_BASE}/api/modules/error-box`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (errBoxRes.ok) {
+          const errBox = await errBoxRes.json();
+          if (errBox && errBox.totalCards > 0) {
+            combinedModules = [errBox, ...combinedModules];
+          }
+        }
+      } catch (e) {}
+
+      setModules(combinedModules);
       cacheModulesLocally(data);
     } catch (err) {
       const cached = getCachedModulesLocally();
@@ -589,12 +605,81 @@ export default function DashboardPage({
               fontSize: '1.4rem',
               boxShadow: 'var(--glow-violet)'
             }}>
-              🎧
+              🔊
             </div>
             <div>
               <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Тренажер тонов</h4>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
                 Различение тонов на слух (игровой тест)
+              </p>
+            </div>
+          </div>
+
+          {/* Кнопка: Слушай на ходу (Hands-Free) */}
+          <div 
+            onClick={onSelectHandsFree}
+            className="glass-panel" 
+            style={{ 
+              padding: '20px 24px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '16px', 
+              cursor: 'pointer',
+              background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08), rgba(255, 255, 255, 0.02))'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
+              background: 'rgba(0, 242, 254, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--neon-cyan)',
+              fontSize: '1.4rem',
+              boxShadow: 'var(--glow-cyan)'
+            }}>
+              🎧
+            </div>
+            <div>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Слушай на ходу</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
+                Фоновый аудио-плеер карточек с таймингом
+              </p>
+            </div>
+          </div>
+
+          {/* Кнопка: Интерактивные микро-диалоги */}
+          <div 
+            onClick={onSelectDialogues}
+            className="glass-panel" 
+            style={{ 
+              padding: '20px 24px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '16px', 
+              cursor: 'pointer',
+              background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.08), rgba(255, 255, 255, 0.02))'
+            }}
+          >
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '12px',
+              background: 'rgba(255, 204, 0, 0.15)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffcc00',
+              fontSize: '1.4rem'
+            }}>
+              💬
+            </div>
+            <div>
+              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Микро-диалоги</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
+                Живые сценарии общения по словам модуля
               </p>
             </div>
           </div>

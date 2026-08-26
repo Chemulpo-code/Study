@@ -99,11 +99,14 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     loadData();
   }, [moduleId]);
 
+  const [mnemonic, setMnemonic] = useState('');
+
   const handleOpenCreateForm = () => {
     setEditingCardId(null);
     setCharacters('');
     setPinyin('');
     setTranslation('');
+    setMnemonic('');
     setExampleChinese('');
     setExamplePinyin('');
     setExampleTranslation('');
@@ -116,6 +119,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     setCharacters(card.characters);
     setPinyin(card.pinyin);
     setTranslation(card.translation);
+    setMnemonic(card.mnemonic || '');
     setUsedTatoebaSentences(card.examples ? card.examples.map(e => e.chinese).filter(Boolean) : []);
     
     if (card.examples && card.examples.length > 0) {
@@ -157,7 +161,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ characters, pinyin, translation, examples })
+        body: JSON.stringify({ characters, pinyin, translation, examples, mnemonic })
       });
 
       const data = await response.json();
@@ -416,7 +420,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 />
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Перевод на русский
                 </label>
@@ -427,6 +431,19 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                   value={translation}
                   onChange={(e) => setTranslation(e.target.value)}
                   required
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                  💡 Мнемоника / Ассоциация (необязательно)
+                </label>
+                <input 
+                  type="text" 
+                  className="input-glass"
+                  placeholder="например, Пин = фрукт, Го = яблоко"
+                  value={mnemonic}
+                  onChange={(e) => setMnemonic(e.target.value)}
                 />
               </div>
 

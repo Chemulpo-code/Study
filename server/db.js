@@ -208,21 +208,22 @@ const db = {
     return dataCache.cards.find(c => c.id === id);
   },
 
-  createCard(moduleId, characters, pinyin, translation, examples = []) {
+  createCard(moduleId, characters, pinyin, translation, examples = [], mnemonic = '') {
     const card = {
       id: crypto.randomUUID(),
       moduleId,
       characters,
       pinyin,
       translation,
-      examples // [{ chinese, pinyin, translation }]
+      examples, // [{ chinese, pinyin, translation }]
+      mnemonic
     };
     dataCache.cards.push(card);
     saveDb();
     return card;
   },
 
-  updateCard(id, characters, pinyin, translation, examples) {
+  updateCard(id, characters, pinyin, translation, examples, mnemonic) {
     const cardIndex = dataCache.cards.findIndex(c => c.id === id);
     if (cardIndex === -1) return null;
 
@@ -231,7 +232,8 @@ const db = {
       characters: characters !== undefined ? characters : dataCache.cards[cardIndex].characters,
       pinyin: pinyin !== undefined ? pinyin : dataCache.cards[cardIndex].pinyin,
       translation: translation !== undefined ? translation : dataCache.cards[cardIndex].translation,
-      examples: examples !== undefined ? examples : dataCache.cards[cardIndex].examples
+      examples: examples !== undefined ? examples : dataCache.cards[cardIndex].examples,
+      mnemonic: mnemonic !== undefined ? mnemonic : dataCache.cards[cardIndex].mnemonic
     };
     saveDb();
     return dataCache.cards[cardIndex];
@@ -256,37 +258,87 @@ const db = {
     return dataCache.progress.filter(p => p.userId === userId && moduleCardIds.includes(p.cardId));
   },
 
-  saveProgress(userId, cardId, status) {
+  // Логирование ошибки по карточке
+  logCardError(userId, cardId) {
     const progressIndex = dataCache.progress.findIndex(p => p.userId === userId && p.cardId === cardId);
-    const prevProgress = progressIndex !== -1 ? dataCache.progress[progressIndex] : null;
-
-    let currentBox = 1;
-    if (status === 'know') {
-      const prevBox = (prevProgress && prevProgress.box) || 1;
-      currentBox = Math.min(prevBox + 1, 5);
+    const nowStr = new Date().toISOString();
+    
+    if (progressIndex !== -1) {
+      dataCache.progress[progressIndex].lastFailureDate = nowStr;
+      dataCache.progress[progressIndex].errorCount = (dataCache.progress[progressIndex].errorCount || 0) + 1;
+      dataCache.progress[progressIndex].updatedAt = nowStr;
     } else {
-      currentBox = 1;
+      dataCache.progress.push({
+        userId,
+        cardId,
+        status: 'dont_know',
+        box: 1,
+        easeFactor: 2.5,
+        interval: 1,
+        repetitions: 0,
+        errorCount: 1,
+        lastFailureDate: nowStr,
+        updatedAt: nowStr
+      });
+    }
+    saveDb();
+  },
+
+  // Получение карточек с ошибками за последние N дней
+  getErrorCards(userId, days = 7) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    
+    const failedProgress = dataCache.progress.filter(p => {
+      if (p.userId !== userId) return false;
+      if (!p.lastFailureDate) return false;
+      return new Date(p.lastFailureDate) >= cutoffDate;
+    });
+
+    const cardIds = failedProgress.map(p => p.cardId);
+    return dataCache.cards.filter(c => cardIds.includes(c.id));
+  },
+
+  // Сохранение прогресса по алгоритму SM-2
+  saveSm2Progress(userId, cardId, rating) {
+    const progressIndex = dataCache.progress.findIndex(p => p.userId === userId && p.cardId === cardId);
+    const prev = progressIndex !== -1 ? dataCache.progress[progressIndex] : null;
+
+    let easeFactor = prev && prev.easeFactor ? prev.easeFactor : 2.5;
+    let interval = prev && prev.interval ? prev.interval : 1;
+    let repetitions = prev && prev.repetitions ? prev.repetitions : 0;
+    const now = new Date();
+
+    if (rating === 1) { // Снова (Again)
+      repetitions = 0;
+      interval = 1;
+      easeFactor = Math.max(1.3, easeFactor - 0.2);
+    } else if (rating === 2) { // Трудно (Hard)
+      interval = Math.max(1, Math.round(interval * 1.2));
+      easeFactor = Math.max(1.3, easeFactor - 0.15);
+    } else if (rating === 3) { // Хорошо (Good)
+      repetitions += 1;
+      interval = repetitions === 1 ? 1 : repetitions === 2 ? 6 : Math.round(interval * easeFactor);
+    } else if (rating === 4) { // Легко (Easy)
+      repetitions += 1;
+      interval = repetitions === 1 ? 4 : Math.round(interval * easeFactor * 1.3);
+      easeFactor = Math.min(3.0, easeFactor + 0.15);
     }
 
-    const intervals = {
-      1: 1,  // 1 день
-      2: 3,  // 3 дня
-      3: 7,  // 7 дней
-      4: 14, // 14 дней
-      5: 30  // 30 дней
-    };
-
-    const daysToAdd = intervals[currentBox] || 1;
-    const nextReview = new Date();
-    nextReview.setDate(nextReview.getDate() + daysToAdd);
+    const nextReview = new Date(now);
+    nextReview.setDate(nextReview.getDate() + interval);
 
     const progressEntry = {
+      ...(prev || {}),
       userId,
       cardId,
-      status, // 'know' | 'dont_know'
-      box: currentBox,
+      status: rating >= 3 ? 'know' : 'dont_know',
+      box: Math.min(Math.max(1, Math.ceil(interval / 3)), 5),
+      easeFactor: Number(easeFactor.toFixed(2)),
+      interval,
+      repetitions,
       nextReviewAt: nextReview.toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: now.toISOString()
     };
 
     if (progressIndex !== -1) {
@@ -295,11 +347,13 @@ const db = {
       dataCache.progress.push(progressEntry);
     }
 
-    // Обновляем стрик пользователя при активности
     this.updateUserStreak(userId);
-    
     saveDb();
     return progressEntry;
+  },
+
+  saveProgress(userId, cardId, status) {
+    return this.saveSm2Progress(userId, cardId, status === 'know' ? 3 : 1);
   },
 
   // Сброс прогресса по модулю
