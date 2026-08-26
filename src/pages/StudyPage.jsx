@@ -647,8 +647,9 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                               </div>
                             )}
                             {currentCard.mnemonic && (
-                              <div style={{ color: '#ffcc00', lineHeight: '1.4' }}>
-                                💡 <strong>Мнемоника:</strong> {currentCard.mnemonic}
+                              <div style={{ color: '#ffcc00', lineHeight: '1.4', whiteSpace: 'pre-line' }}>
+                                💡 <strong>Мнемоника:</strong>
+                                <div style={{ marginTop: '4px' }}>{currentCard.mnemonic}</div>
                               </div>
                             )}
                           </div>

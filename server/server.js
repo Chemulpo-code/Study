@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.9.2',
-    buildHash: 'v1.9.2-fix-card-layout-textarea',
+    version: '1.9.3',
+    buildHash: 'v1.9.3-rich-structured-mnemonics',
     serverTime: new Date().toISOString()
   });
 });

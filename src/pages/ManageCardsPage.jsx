@@ -469,7 +469,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 </div>
                 <textarea 
                   className="input-glass"
-                  rows={3}
+                  rows={5}
                   placeholder="Нажмите '✨ Сгенерировать' или введите свою мнемонику"
                   value={mnemonic}
                   onChange={(e) => setMnemonic(e.target.value)}
