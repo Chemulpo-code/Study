@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   chinese-study:
-    image: chinese-study:1.9.0
     build:
       context: .
       dockerfile: Dockerfile
