@@ -591,29 +591,30 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                   </div>
 
                   {/* Обратная сторона */}
-                  <div className="flip-card-back" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: '12px' }}>
-                      <div className="chinese-char-sm" style={{ color: '#fff', fontSize: '3.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px' }}>
+                  <div className="flip-card-back" style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
+                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div className="chinese-char-sm" style={{ color: '#fff', fontSize: '2.6rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px' }}>
                         {currentCard.characters}
-                        <AudioPlayer text={currentCard.characters} style={{ width: '44px', height: '44px' }} />
+                        <AudioPlayer text={currentCard.characters} style={{ width: '40px', height: '40px' }} />
                       </div>
+
                       <div style={{
-                        fontSize: '1.6rem',
+                        fontSize: '1.25rem',
                         color: 'var(--neon-cyan)',
                         fontWeight: '700',
                         letterSpacing: '1px',
-                        textShadow: '0 0 12px rgba(0, 242, 254, 0.3)'
+                        textShadow: '0 0 10px rgba(0, 242, 254, 0.3)'
                       }}>
                         {currentCard.pinyin}
                       </div>
+
                       <div style={{ 
-                        fontSize: '1.6rem', 
+                        fontSize: '1.3rem', 
                         fontWeight: '600', 
                         color: '#fff',
                         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                        paddingTop: '16px',
-                        maxWidth: '90%',
-                        margin: '8px auto 0 auto',
+                        paddingTop: '8px',
+                        width: '100%',
                         textAlign: 'center'
                       }}>
                         {currentCard.translation}
@@ -625,14 +626,15 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                         if (radicals.length === 0 && !currentCard.mnemonic) return null;
                         return (
                           <div style={{
-                            marginTop: '12px',
-                            background: 'rgba(0, 242, 254, 0.05)',
-                            border: '1px solid rgba(0, 242, 254, 0.15)',
-                            borderRadius: '12px',
+                            width: '100%',
+                            marginTop: '8px',
+                            background: 'rgba(255, 204, 0, 0.08)',
+                            border: '1px solid rgba(255, 204, 0, 0.25)',
+                            borderRadius: '14px',
                             padding: '10px 14px',
-                            maxWidth: '95%',
-                            fontSize: '0.8rem',
-                            textAlign: 'left'
+                            fontSize: '0.85rem',
+                            textAlign: 'left',
+                            boxSizing: 'border-box'
                           }}>
                             {radicals.length > 0 && (
                               <div style={{ marginBottom: currentCard.mnemonic ? '6px' : '0' }}>
@@ -645,43 +647,42 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                               </div>
                             )}
                             {currentCard.mnemonic && (
-                              <div style={{ color: '#ffcc00' }}>
+                              <div style={{ color: '#ffcc00', lineHeight: '1.4' }}>
                                 💡 <strong>Мнемоника:</strong> {currentCard.mnemonic}
                               </div>
                             )}
                           </div>
                         );
                       })()}
-                    </div>
 
-                    {/* Блок с примерами */}
-                    {currentCard.examples && currentCard.examples.length > 0 && (
-                      <div style={{
-                        width: '100%',
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        borderRadius: '16px',
-                        padding: '16px',
-                        textAlign: 'left',
-                        maxHeight: '130px',
-                        overflowY: 'auto',
-                        marginBottom: '8px'
-                      }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span>Пример использования:</span>
-                          <AudioPlayer text={currentCard.examples[0].chinese} />
-                        </span>
-                        {currentCard.examples.map((ex, idx) => (
-                          <div key={idx} style={{ fontSize: '0.95rem', lineHeight: '1.4' }}>
-                            <div style={{ fontFamily: 'Noto Sans SC', color: '#fff', fontSize: '1.1rem', fontWeight: '500' }}>{ex.chinese}</div>
-                            <div style={{ color: 'var(--neon-cyan)', fontSize: '0.85rem' }}>{ex.pinyin}</div>
-                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{ex.translation}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                      {/* Блок с примерами */}
+                      {currentCard.examples && currentCard.examples.length > 0 && (
+                        <div style={{
+                          width: '100%',
+                          marginTop: '8px',
+                          background: 'rgba(0, 242, 254, 0.04)',
+                          border: '1px solid rgba(0, 242, 254, 0.15)',
+                          borderRadius: '14px',
+                          padding: '10px 14px',
+                          textAlign: 'left',
+                          boxSizing: 'border-box'
+                        }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <span>Пример использования:</span>
+                            <AudioPlayer text={currentCard.examples[0].chinese} />
+                          </span>
+                          {currentCard.examples.map((ex, idx) => (
+                            <div key={idx} style={{ fontSize: '0.9rem', lineHeight: '1.35' }}>
+                              <div style={{ fontFamily: 'Noto Sans SC', color: '#fff', fontSize: '1.05rem', fontWeight: '500' }}>{ex.chinese}</div>
+                              <div style={{ color: 'var(--neon-cyan)', fontSize: '0.8rem' }}>{ex.pinyin}</div>
+                              <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{ex.translation}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
                       Кликните, чтобы скрыть ответ
                     </span>
                   </div>
