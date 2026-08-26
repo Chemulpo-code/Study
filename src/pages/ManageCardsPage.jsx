@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Edit, Trash, RefreshCw, X } from '../components/Icons';
 import { API_BASE } from '../config';
 import { useToast } from '../components/Toast';
+import { generateMnemonic } from '../utils/radicalsData';
 
 export default function ManageCardsPage({ token, moduleId, onBackToDashboard, onBack }) {
   const { showToast } = useToast();
@@ -175,6 +176,16 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const handleAutoGenerateMnemonic = () => {
+    if (!characters.trim()) {
+      showToast('Сначала введите китайские иероглифы', 'error');
+      return;
+    }
+    const autoMn = generateMnemonic(characters, pinyin, translation);
+    setMnemonic(autoMn);
+    showToast('Мнемоника сгенерирована! ✨', 'success');
   };
 
   const handleDeleteCard = async (id, word) => {
@@ -435,13 +446,31 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
               </div>
 
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  💡 Мнемоника / Ассоциация (необязательно)
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    💡 Мнемоника / Ассоциация (необязательно)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAutoGenerateMnemonic}
+                    disabled={!characters.trim()}
+                    className="btn-neon btn-secondary"
+                    style={{
+                      padding: '2px 10px',
+                      fontSize: '0.75rem',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 204, 0, 0.1)',
+                      color: '#ffcc00',
+                      border: '1px solid rgba(255, 204, 0, 0.3)'
+                    }}
+                  >
+                    ✨ Сгенерировать
+                  </button>
+                </div>
                 <input 
                   type="text" 
                   className="input-glass"
-                  placeholder="например, Пин = фрукт, Го = яблоко"
+                  placeholder="Нажмите '✨ Сгенерировать' или введите свою мнемонику"
                   value={mnemonic}
                   onChange={(e) => setMnemonic(e.target.value)}
                 />

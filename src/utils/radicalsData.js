@@ -20,7 +20,6 @@ export const COMMON_RADICALS = {
   '目': { name: 'Глаз', pinyin: 'mù', meaning: 'Зрение, смотреть, глаза' },
   '言': { name: 'Речь, Слово', pinyin: 'yán', meaning: 'Слова, разговоры, языки' },
   '讠': { name: 'Речь (упрощенная)', pinyin: 'yán', meaning: 'Слова, разговоры, языки' },
-  '讠': { name: 'Речь', pinyin: 'yán', meaning: 'Слова, разговоры, языки' },
   '食': { name: 'Еда', pinyin: 'shí', meaning: 'Пища, еда, кушать' },
   '饣': { name: 'Еда (упрощенная)', pinyin: 'shí', meaning: 'Пища, блюда, кушать' },
   '贝': { name: 'Ракушка, Деньги', pinyin: 'bèi', meaning: 'Богатство, торговля, ценность' },
@@ -39,8 +38,6 @@ export const COMMON_RADICALS = {
   '刂': { name: 'Нож (боковой)', pinyin: 'dāo', meaning: 'Разрезание, разделение' },
   '犭': { name: 'Собака/Зверь', pinyin: 'quǎn', meaning: 'Животные, дикие звери' },
   '足': { name: 'Нога', pinyin: 'zú', meaning: 'Ноги, ходьба, пинать' },
-  '屮': { name: 'Нога (боковая)', pinyin: 'zú', meaning: 'Движение ногами' },
-  '𻏀': { name: 'Птица', pinyin: 'niǎo', meaning: 'Птицы, крылатые' },
   '鸟': { name: 'Птица', pinyin: 'niǎo', meaning: 'Птицы, крылатые' },
   '走': { name: 'Бежать, Идти', pinyin: 'zǒu', meaning: 'Пешая ходьба, движение' },
   '金': { name: 'Металл, Золото', pinyin: 'jīn', meaning: 'Металлы, инструменты, деньги' },
@@ -48,6 +45,32 @@ export const COMMON_RADICALS = {
   '雨': { name: 'Дождь', pinyin: 'yǔ', meaning: 'Осадки, погода, облака' },
   '玉': { name: 'Нефрит', pinyin: 'yù', meaning: 'Драгоценные камни, украшения' },
   '王': { name: 'Король / Нефрит', pinyin: 'wáng', meaning: 'Правитель, драгоценности' }
+};
+
+// Известные этимологические истории для частых иероглифов
+const KNOWN_STORIES = {
+  '休': 'Человек (亻) прислонился к дереву (木), чтобы отдохнуть.',
+  '好': 'Женщина (女) с ребенком (子) на руках — это ХОРОШО.',
+  '明': 'Солнце (日) и Луна (月) вместе создают ЯРКИЙ свет.',
+  '男': 'Мужчина прикладывает СИЛУ (力) для работы на ПОЛЕ (田).',
+  '看': 'Приложил РУКУ (手) над ГЛАЗОМ (目), чтобы СМОТРЕТЬ вдаль.',
+  '听': 'РОТ (口) слушает звук ТОПОРА (斤) — СЛУШАТЬ.',
+  '语': 'РЕЧЬ (讠) + Я (吾) ➔ язык, на котором Я говорю.',
+  '话': 'РЕЧЬ (讠) + ЯЗЫК (舌) ➔ произносить слова, разговаривать.',
+  '钱': 'МЕТАЛЛ (钅) + КОПЬЕ (戋) ➔ металлические деньги.',
+  '买': 'Покупать вещи над головой.',
+  '卖': 'Продавать товары.',
+  '国': 'ОГРАЖДЕНИЕ (囗) вокруг НЕФРИТА (玉) ➔ забор вокруг сокровищ страны.',
+  '门': 'Два косяка двери ➔ ВОРОТА / ДВЕРЬ.',
+  '茶': 'ТРАВА (艹) + ЧЕЛОВЕК (人) + ДЕРЕВО (木) ➔ человек собирает чайные листья с дерева.',
+  '水': 'Поток реки с брызгами ➔ ВОДА.',
+  '火': 'Пламя костра ➔ ОГОНЬ.',
+  '林': 'Два ДЕРЕВА (木 + 木) образуют РОЩУ / ЛЕС.',
+  '森': 'Три ДЕРЕВА (木 + 木 + 木) образуют ГУСТОЙ ЛЕС.',
+  '晶': 'Три СОЛНЦА (日 + 日 + 日) ➔ кристалльно чистый блеск.',
+  '唱': 'РОТ (口) поет под двумя СОЛНЦАМИ ➔ ПЕТЬ.',
+  '喝': 'РОТ (口) пьет жидкость на жаре ➔ ПИТЬ.',
+  '问': 'РОТ (口) у ДВЕРИ (门) ➔ спрашивать дорогу.'
 };
 
 // Деконструкция иероглифа на визуальные составные части
@@ -58,11 +81,9 @@ export function deconstructCharacter(charStr) {
   const chars = charStr.split('');
   
   for (const c of chars) {
-    // Ищем прямое совпадение в радикалах
     if (COMMON_RADICALS[c]) {
       results.push({ char: c, ...COMMON_RADICALS[c] });
     } else {
-      // Ищем вложенные радикалы в иероглифе
       for (const [rad, info] of Object.entries(COMMON_RADICALS)) {
         if (c.includes(rad) && c !== rad) {
           results.push({ char: rad, ...info, parentChar: c });
@@ -71,8 +92,41 @@ export function deconstructCharacter(charStr) {
     }
   }
 
-  // Убираем дубликаты
   const uniqueMap = new Map();
   results.forEach(r => uniqueMap.set(r.char, r));
   return Array.from(uniqueMap.values());
+}
+
+// Авто-генератор мнемоники на основе составных ключей и известной этимологии
+export function generateMnemonic(characters, pinyin = '', translation = '') {
+  if (!characters || !characters.trim()) return '';
+
+  const cleanChar = characters.trim();
+
+  // 1. Прямая проверка известных историй
+  if (KNOWN_STORIES[cleanChar]) {
+    return KNOWN_STORIES[cleanChar];
+  }
+
+  // 2. Если в слове несколько иероглифов (например, 苹果)
+  for (const c of cleanChar.split('')) {
+    if (KNOWN_STORIES[c]) {
+      return `Иероглиф "${c}": ${KNOWN_STORIES[c]}`;
+    }
+  }
+
+  // 3. Динамическая генерация на основе радикалов
+  const radicals = deconstructCharacter(cleanChar);
+  if (radicals.length > 0) {
+    const radList = radicals.map(r => `${r.name} (${r.char})`).join(' + ');
+    const mainMeaning = translation ? ` ➔ ассоциируется с «${translation}»` : '';
+    return `Ключи: ${radList}${mainMeaning}.`;
+  }
+
+  // 4. Запасная ассоция по звучанию (Пиньинь + Перевод)
+  if (pinyin && translation) {
+    return `Созвучие: «${pinyin}» ➔ запоминаем как «${translation}».`;
+  }
+
+  return `Иероглиф «${cleanChar}» ➔ ключевое слово «${translation || cleanChar}».`;
 }
