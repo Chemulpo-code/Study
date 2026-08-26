@@ -2,10 +2,14 @@ version: '3.8'
 
 services:
   chinese-study:
+    image: chinese-study:1.9.0
     build:
       context: .
       dockerfile: Dockerfile
     container_name: chinese-study-app
+    labels:
+      - "version=1.9.0"
+      - "app=chinese-study"
     restart: always
     ports:
       - "5005:5005"
