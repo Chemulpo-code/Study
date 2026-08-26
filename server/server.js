@@ -450,13 +450,12 @@ app.get('/api/tatoeba/example', authenticateToken, async (req, res) => {
 
 // Создать карточку
 app.post('/api/modules/:moduleId/cards', authenticateToken, async (req, res) => {
-  const { characters, pinyin, translation, examples } = req.body;
+  const { characters, pinyin, translation, examples, mnemonic } = req.body;
   const module = db.getModuleById(req.params.moduleId);
   if (!module || module.userId !== req.user.id) {
     return res.status(403).json({ error: 'Нет доступа к этому модулю.' });
   }
 
-  const { characters, pinyin, translation, examples, mnemonic } = req.body;
   if (!characters || !translation) {
     return res.status(400).json({ error: 'Иероглифы и перевод обязательны для заполнения.' });
   }
