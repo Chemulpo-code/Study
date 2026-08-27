@@ -21,8 +21,8 @@ app.use(express.json());
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.9.4',
-    buildHash: 'v1.9.4-clean-audio-and-card',
+    version: '1.9.5',
+    buildHash: 'v1.9.5-restore-manual-slow-audio-toggle',
     serverTime: new Date().toISOString()
   });
 });
