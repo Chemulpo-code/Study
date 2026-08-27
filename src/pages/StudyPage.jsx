@@ -570,11 +570,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                           </div>
                         </>
                       )}
-                      {Boolean(currentCard?.box && currentCard.box > 0) && (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                          📦 Коробка Лейтнера: {currentCard.box}
-                        </span>
-                      )}
                     </div>
 
                     <span style={{ 
@@ -620,38 +615,28 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                         {currentCard.translation}
                       </div>
 
-                      {/* Разбор ключей и мнемоника */}
+                      {/* Разбор ключей */}
                       {(() => {
                         const radicals = deconstructCharacter(currentCard.characters);
-                        if (radicals.length === 0 && !currentCard.mnemonic) return null;
+                        if (radicals.length === 0) return null;
                         return (
                           <div style={{
                             width: '100%',
                             marginTop: '8px',
-                            background: 'rgba(255, 204, 0, 0.08)',
-                            border: '1px solid rgba(255, 204, 0, 0.25)',
+                            background: 'rgba(0, 242, 254, 0.05)',
+                            border: '1px solid rgba(0, 242, 254, 0.15)',
                             borderRadius: '14px',
                             padding: '10px 14px',
                             fontSize: '0.85rem',
                             textAlign: 'left',
                             boxSizing: 'border-box'
                           }}>
-                            {radicals.length > 0 && (
-                              <div style={{ marginBottom: currentCard.mnemonic ? '6px' : '0' }}>
-                                <span style={{ color: 'var(--neon-cyan)', fontWeight: '700' }}>🧱 Ключи: </span>
-                                {radicals.map((r, i) => (
-                                  <span key={i} style={{ color: '#fff', marginRight: '8px' }}>
-                                    <strong>{r.char}</strong> ({r.name})
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {currentCard.mnemonic && (
-                              <div style={{ color: '#ffcc00', lineHeight: '1.4', whiteSpace: 'pre-line' }}>
-                                💡 <strong>Мнемоника:</strong>
-                                <div style={{ marginTop: '4px' }}>{currentCard.mnemonic}</div>
-                              </div>
-                            )}
+                            <span style={{ color: 'var(--neon-cyan)', fontWeight: '700' }}>🧱 Ключи: </span>
+                            {radicals.map((r, i) => (
+                              <span key={i} style={{ color: '#fff', marginRight: '8px' }}>
+                                <strong>{r.char}</strong> ({r.name})
+                              </span>
+                            ))}
                           </div>
                         );
                       })()}

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Plus, Edit, Trash, RefreshCw, X } from '../components/Icons';
 import { API_BASE } from '../config';
 import { useToast } from '../components/Toast';
-import { generateMnemonic } from '../utils/radicalsData';
 
 export default function ManageCardsPage({ token, moduleId, onBackToDashboard, onBack }) {
   const { showToast } = useToast();
@@ -100,14 +99,11 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     loadData();
   }, [moduleId]);
 
-  const [mnemonic, setMnemonic] = useState('');
-
   const handleOpenCreateForm = () => {
     setEditingCardId(null);
     setCharacters('');
     setPinyin('');
     setTranslation('');
-    setMnemonic('');
     setExampleChinese('');
     setExamplePinyin('');
     setExampleTranslation('');
@@ -120,7 +116,6 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     setCharacters(card.characters);
     setPinyin(card.pinyin);
     setTranslation(card.translation);
-    setMnemonic(card.mnemonic || '');
     setUsedTatoebaSentences(card.examples ? card.examples.map(e => e.chinese).filter(Boolean) : []);
     
     if (card.examples && card.examples.length > 0) {
@@ -162,7 +157,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ characters, pinyin, translation, examples, mnemonic })
+        body: JSON.stringify({ characters, pinyin, translation, examples })
       });
 
       const data = await response.json();
@@ -176,16 +171,6 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     } finally {
       setFormLoading(false);
     }
-  };
-
-  const handleAutoGenerateMnemonic = () => {
-    if (!characters.trim()) {
-      showToast('Сначала введите китайские иероглифы', 'error');
-      return;
-    }
-    const autoMn = generateMnemonic(characters, pinyin, translation);
-    setMnemonic(autoMn);
-    showToast('Мнемоника сгенерирована! ✨', 'success');
   };
 
   const handleDeleteCard = async (id, word) => {
@@ -442,38 +427,6 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                   value={translation}
                   onChange={(e) => setTranslation(e.target.value)}
                   required
-                />
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    💡 Мнемоника / Ассоциация (необязательно)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleAutoGenerateMnemonic}
-                    disabled={!characters.trim()}
-                    className="btn-neon btn-secondary"
-                    style={{
-                      padding: '2px 10px',
-                      fontSize: '0.75rem',
-                      borderRadius: '10px',
-                      background: 'rgba(255, 204, 0, 0.1)',
-                      color: '#ffcc00',
-                      border: '1px solid rgba(255, 204, 0, 0.3)'
-                    }}
-                  >
-                    ✨ Сгенерировать
-                  </button>
-                </div>
-                <textarea 
-                  className="input-glass"
-                  rows={5}
-                  placeholder="Нажмите '✨ Сгенерировать' или введите свою мнемонику"
-                  value={mnemonic}
-                  onChange={(e) => setMnemonic(e.target.value)}
-                  style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.4' }}
                 />
               </div>
 

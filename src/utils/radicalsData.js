@@ -1,4 +1,4 @@
-// Расширенный словарь распространенных китайских ключей (иероглифических радикалов)
+// Словарь распространенных китайских ключей (иероглифических радикалов) и авто-деконструкция
 export const COMMON_RADICALS = {
   '人': { name: 'Человек', pinyin: 'rén', meaning: 'Человек, людской' },
   '亻': { name: 'Человек (боковой)', pinyin: 'rén', meaning: 'Относится к людям, действиям человека' },
@@ -49,30 +49,6 @@ export const COMMON_RADICALS = {
   '王': { name: 'Король / Нефрит', pinyin: 'wáng', meaning: 'Правитель, драгоценности' }
 };
 
-// Известные смыслы индивидуальных иероглифов
-const CHARACTER_DETAILS = {
-  '支': { pinyin: 'zhī', meaning: 'выплачивать / держать', keys: 'Рука (又) / Ветка ✋' },
-  '付': { pinyin: 'fù', meaning: 'передавать / платить', keys: 'Человек (亻) + Ладонь (寸) 🤲' },
-  '宝': { pinyin: 'bǎo', meaning: 'сокровище / драгоценность', keys: 'Крыша (宀) 🏠 + Нефрит (玉) 💎' },
-  '好': { pinyin: 'hǎo', meaning: 'хороший / хорошо', keys: 'Женщина (女) 👩 + Ребенок (子) 👶' },
-  '吧': { pinyin: 'ba', meaning: 'выражение согласия / частица', keys: 'Рот (口) 🗣️ + Желание' },
-  '苹': { pinyin: 'píng', meaning: 'яблоневый сорт', keys: 'Трава (艹) 🌱' },
-  '果': { pinyin: 'guǒ', meaning: 'плод / фрукт', keys: 'Дерево (木) 🌳 + Плоды (田)' },
-  '水': { pinyin: 'shuǐ', meaning: 'вода / жидкость', keys: 'Речной поток 💧' },
-  '休': { pinyin: 'xiū', meaning: 'отдыхать', keys: 'Человек (亻) 🧍 + Дерево (木) 🌳' },
-  '明': { pinyin: 'míng', meaning: 'светлый / яркий', keys: 'Солнце (日) ☀️ + Луна (月) 🌙' },
-  '男': { pinyin: 'nán', meaning: 'мужчина', keys: 'Поле (田) 🌾 + Сила (力) 💪' },
-  '看': { pinyin: 'kàn', meaning: 'смотреть', keys: 'Рука (手) ✋ + Глаз (目) 👀' },
-  '听': { pinyin: 'tīng', meaning: 'слушать', keys: 'Рот (口) 👄 + Звук' },
-  '语': { pinyin: 'yǔ', meaning: 'язык / речь', keys: 'Речь (讠) 🗣️ + Я (吾)' },
-  '话': 'РЕЧЬ (讠) + ЯЗЫК (舌)',
-  '电': { pinyin: 'diàn', meaning: 'электричество / молния', keys: 'Вспышка молнии ⚡' },
-  '脑': { pinyin: 'nǎo', meaning: 'мозг / разум', keys: 'Плоть (月) 🧠 + Голова' },
-  '猫': { pinyin: 'māo', meaning: 'кошка', keys: 'Зверь (犭) 🐱 + Растения (苗)' },
-  '狗': { pinyin: 'gǒu', meaning: 'собака', keys: 'Зверь (犭) 🐶 + Звук (句)' },
-  '车': { pinyin: 'chē', meaning: 'машина / транспорт', keys: 'Колеса и повозка 🚗' }
-};
-
 // Деконструкция иероглифа на визуальные составные части
 export function deconstructCharacter(charStr) {
   if (!charStr) return [];
@@ -95,48 +71,4 @@ export function deconstructCharacter(charStr) {
   const uniqueMap = new Map();
   results.forEach(r => uniqueMap.set(r.char, r));
   return Array.from(uniqueMap.values());
-}
-
-// Авто-генератор подробной структурированной мнемоники
-export function generateMnemonic(characters, pinyin = '', translation = '') {
-  if (!characters || !characters.trim()) return '';
-
-  const cleanChar = characters.trim();
-  const charList = cleanChar.split('');
-
-  // Собираем детализацию по каждому иероглифу слова
-  const details = charList.map(c => {
-    if (CHARACTER_DETAILS[c] && typeof CHARACTER_DETAILS[c] === 'object') {
-      return { char: c, ...CHARACTER_DETAILS[c] };
-    }
-    const rads = deconstructCharacter(c);
-    const radNames = rads.map(r => `${r.name} (${r.char})`).join(' + ');
-    return {
-      char: c,
-      pinyin: '',
-      meaning: 'составляющая слова',
-      keys: radNames || 'Графические черты'
-    };
-  });
-
-  // Шаг 1: Формируем список составных иероглифов 🧱
-  let charBreakdownText = details.map(d => {
-    return `• ${d.char}: ${d.keys} ➔ ${d.meaning}`;
-  }).join('\n');
-
-  // Шаг 2: Формируем связную мнемоническую историю 🧠
-  let storyText = '';
-  if (cleanChar === '支付宝' || (translation && translation.toLowerCase().includes('али пей'))) {
-    storyText = 'Рука (支) человека (付) передает оплату прямо под надежную крышу (宝) электронного сейфа сокровищ ➔ Али Пей.';
-  } else if (cleanChar === '好吧') {
-    storyText = 'Женщина (女) с ребенком (子) выражает согласие (口/吧) ➔ «Хорошо / Ладно».';
-  } else if (details.length === 1) {
-    const d = details[0];
-    storyText = `Иероглиф «${d.char}» состоит из ключей (${d.keys}). Запоминаем как «${translation || d.meaning}».`;
-  } else {
-    const keysSummary = details.map(d => `${d.char} (${d.keys})`).join(' + ');
-    storyText = `Складываем кирпичики (${keysSummary}) ➔ получаеся значение «${translation || cleanChar}».`;
-  }
-
-  return `🧱 Разбор по иероглифам:\n${charBreakdownText}\n\n🧠 История для запоминания:\n${storyText}`;
 }
