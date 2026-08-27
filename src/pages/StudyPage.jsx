@@ -130,6 +130,13 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
   };
 
   useEffect(() => {
+    // Мгновенная гидратация карточек из локального кэша для старта за 0 мс
+    const cached = getCachedCardsLocally(moduleId);
+    if (cached && cached.length > 0) {
+      setAllOriginalCards(cached);
+      setCards([...cached].sort(() => Math.random() - 0.5));
+      setLoading(false);
+    }
     fetchCards();
   }, [moduleId, isSpaced]);
 

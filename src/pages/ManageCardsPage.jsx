@@ -3,6 +3,8 @@ import { ArrowLeft, Plus, Edit, Trash, RefreshCw, X } from '../components/Icons'
 import { API_BASE } from '../config';
 import { useToast } from '../components/Toast';
 
+import { cacheCardsLocally, getCachedCardsLocally } from '../utils/offlineStorage';
+
 export default function ManageCardsPage({ token, moduleId, onBackToDashboard, onBack }) {
   const { showToast } = useToast();
   const handleBack = onBackToDashboard || onBack;
@@ -85,7 +87,9 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const cardsData = await cardsRes.json();
-      setCards(Array.isArray(cardsData) ? cardsData : []);
+      const validCards = Array.isArray(cardsData) ? cardsData : [];
+      setCards(validCards);
+      cacheCardsLocally(moduleId, validCards);
     } catch (err) {
       console.error('Ошибка загрузки данных:', err);
       setError(err.message);
@@ -96,6 +100,11 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   };
 
   useEffect(() => {
+    const cached = getCachedCardsLocally(moduleId);
+    if (cached && cached.length > 0) {
+      setCards(cached);
+      setLoading(false);
+    }
     loadData();
   }, [moduleId]);
 

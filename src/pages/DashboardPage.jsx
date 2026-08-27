@@ -60,25 +60,25 @@ export default function DashboardPage({
   // Загрузка модулей с поддержкой офлайн-кэша и виртуального модуля ошибок
   const fetchModules = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/modules`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // Параллельный запрос основных модулей и виртуального модуля ошибок
+      const [response, errBoxRes] = await Promise.all([
+        fetch(`${API_BASE}/api/modules`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/modules/error-box`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
+      ]);
+
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при загрузке модулей');
 
       let combinedModules = [...data];
 
-      try {
-        const errBoxRes = await fetch(`${API_BASE}/api/modules/error-box`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (errBoxRes.ok) {
+      if (errBoxRes && errBoxRes.ok) {
+        try {
           const errBox = await errBoxRes.json();
           if (errBox && errBox.totalCards > 0) {
             combinedModules = [errBox, ...combinedModules];
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
 
       setModules(combinedModules);
       cacheModulesLocally(data);
@@ -109,6 +109,12 @@ export default function DashboardPage({
   };
 
   useEffect(() => {
+    // Мгновенная загрузка модулей из кэша (0мс) на смартфонах/PWA
+    const cached = getCachedModulesLocally();
+    if (cached && cached.length > 0) {
+      setModules(cached);
+      setLoading(false);
+    }
     fetchModules();
     fetchServerVersion();
   }, []);
