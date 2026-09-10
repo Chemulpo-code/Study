@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Play, Pause, SkipForward, SkipBack, RefreshCw } from '../components/Icons';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Play, Pause, SkipForward, SkipBack } from '../components/Icons';
 import { API_BASE } from '../config';
+import { PageHeader } from '../components/UI';
 
 export default function HandsFreeAudioPage({ token, modules, onBack }) {
   const [selectedModuleId, setSelectedModuleId] = useState('all');
@@ -12,21 +13,12 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
   const [loading, setLoading] = useState(true);
 
   const isMountedRef = useRef(true);
+  const isPlayingRef = useRef(false);
+  const currentIndexRef = useRef(0);
+  const playbackRunRef = useRef(0);
   const timerRef = useRef(null);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    fetchCards();
-    return () => {
-      isMountedRef.current = false;
-      clearTimeout(timerRef.current);
-      if (window.activeAudio) {
-        try { window.activeAudio.pause(); } catch (e) {}
-      }
-    };
-  }, [selectedModuleId]);
-
-  const fetchCards = async () => {
+  const fetchCards = useCallback(async () => {
     setLoading(true);
     try {
       let url = `${API_BASE}/api/cards`;
@@ -69,10 +61,22 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedModuleId, token]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    fetchCards();
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(timerRef.current);
+      if (window.activeAudio) {
+        try { window.activeAudio.pause(); } catch {}
+      }
+    };
+  }, [fetchCards]);
 
   // Озвучивание текста через TTS API или синтез речи браузера
-  const speakText = (text, lang = 'zh-CN') => {
+  const speakText = useCallback((text, lang = 'zh-CN') => {
     return new Promise((resolve) => {
       if (!isMountedRef.current) return resolve();
 
@@ -116,11 +120,11 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
         }
       }
     });
-  };
+  }, [speed]);
 
   // Проигрывание последовательности для текущей карточки
-  const playCardSequence = async (index) => {
-    if (!isPlaying || !isMountedRef.current || cards.length === 0) return;
+  const playCardSequence = useCallback(async (index, runId) => {
+    if (runId !== playbackRunRef.current || !isPlayingRef.current || !isMountedRef.current || cards.length === 0) return;
     const card = cards[index];
     if (!card) return;
 
@@ -128,7 +132,7 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
     setCurrentStep('chinese');
     await speakText(card.characters, 'zh-CN');
 
-    if (!isPlaying || !isMountedRef.current) return;
+    if (runId !== playbackRunRef.current || !isPlayingRef.current || !isMountedRef.current) return;
 
     // Шаг 2: Пауза 2.5 секунды для вспоминания перевода
     setCurrentStep('pause');
@@ -136,13 +140,13 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
       timerRef.current = setTimeout(res, 2500 / speed);
     });
 
-    if (!isPlaying || !isMountedRef.current) return;
+    if (runId !== playbackRunRef.current || !isPlayingRef.current || !isMountedRef.current) return;
 
     // Шаг 3: Русский перевод
     setCurrentStep('russian');
     await speakText(card.translation, 'ru-RU');
 
-    if (!isPlaying || !isMountedRef.current) return;
+    if (runId !== playbackRunRef.current || !isPlayingRef.current || !isMountedRef.current) return;
 
     // Шаг 4: Пример предложения (если есть)
     if (card.examples && card.examples.length > 0 && card.examples[0].chinese) {
@@ -150,30 +154,37 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
       await speakText(card.examples[0].chinese, 'zh-CN');
     }
 
-    if (!isPlaying || !isMountedRef.current) return;
+    if (runId !== playbackRunRef.current || !isPlayingRef.current || !isMountedRef.current) return;
 
     // Шаг 5: Переход к следующей карточке
     const nextIdx = (index + 1) % cards.length;
+    currentIndexRef.current = nextIdx;
     setCurrentIndex(nextIdx);
     timerRef.current = setTimeout(() => {
-      playCardSequence(nextIdx);
+      playCardSequence(nextIdx, runId);
     }, 1000 / speed);
-  };
+  }, [cards, speakText, speed]);
 
   useEffect(() => {
+    isPlayingRef.current = isPlaying;
+    const runId = ++playbackRunRef.current;
     if (isPlaying) {
-      playCardSequence(currentIndex);
+      playCardSequence(currentIndexRef.current, runId);
     } else {
       clearTimeout(timerRef.current);
       if (window.activeAudio) {
-        try { window.activeAudio.pause(); } catch (e) {}
+        try { window.activeAudio.pause(); } catch {}
       }
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
       setCurrentStep('idle');
     }
-  }, [isPlaying]);
+  }, [isPlaying, playCardSequence]);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   const togglePlay = () => {
     setIsPlaying(prev => !prev);
@@ -183,16 +194,18 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
     clearTimeout(timerRef.current);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     const nextIdx = (currentIndex + 1) % cards.length;
+    currentIndexRef.current = nextIdx;
     setCurrentIndex(nextIdx);
-    if (isPlaying) playCardSequence(nextIdx);
+    if (isPlaying) playCardSequence(nextIdx, ++playbackRunRef.current);
   };
 
   const handlePrev = () => {
     clearTimeout(timerRef.current);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     const prevIdx = (currentIndex - 1 + cards.length) % cards.length;
+    currentIndexRef.current = prevIdx;
     setCurrentIndex(prevIdx);
-    if (isPlaying) playCardSequence(prevIdx);
+    if (isPlaying) playCardSequence(prevIdx, ++playbackRunRef.current);
   };
 
   if (loading) {
@@ -207,57 +220,17 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
   const currentCard = cards[currentIndex];
 
   return (
-    <div style={{ maxWidth: '700px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
-      {/* Прикрепленная верхняя панель навигации */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'rgba(10, 14, 23, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 20px',
-        margin: '-40px -20px 24px -20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={onBack} 
-            className="btn-neon btn-secondary" 
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              fontWeight: '600',
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              borderRadius: '10px'
-            }}
-          >
-            <ArrowLeft size={16} /> Назад
-          </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#fff', margin: 0 }}>
-            🎧 Слушай на ходу (Hands-Free)
-          </h2>
-        </div>
-
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Слово {cards.length > 0 ? currentIndex + 1 : 0} из {cards.length}
-        </div>
-      </div>
+    <div className="page-container compact-page">
+      <PageHeader title="Слушай на ходу" eyebrow="Аудиопрактика · 听" meta={`${cards.length ? currentIndex + 1 : 0} из ${cards.length}`} onBack={onBack} />
 
       {/* Селектор выбора модуля */}
       <div style={{ marginBottom: '24px' }}>
-        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+        <label htmlFor="audio-module" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
           Выберите модуль для аудио-тренировки:
         </label>
         <select
+          id="audio-module"
+          name="module"
           value={selectedModuleId}
           onChange={(e) => setSelectedModuleId(e.target.value)}
           style={{
@@ -267,8 +240,7 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
             background: 'rgba(255, 255, 255, 0.04)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             color: '#fff',
-            fontSize: '0.95rem',
-            outline: 'none'
+            fontSize: '0.95rem'
           }}
         >
           <option value="all" style={{ background: '#121824' }}>📚 Все модули</option>
@@ -293,7 +265,7 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
             marginBottom: '32px',
             border: isPlaying ? '1px solid var(--neon-cyan)' : '1px solid rgba(255,255,255,0.08)',
             boxShadow: isPlaying ? '0 0 30px rgba(0, 242, 254, 0.15)' : 'none',
-            transition: 'all 0.4s ease'
+            transition: 'border-color 0.4s ease, box-shadow 0.4s ease'
           }}>
             {/* Статус автопроигрывания */}
             <div style={{ marginBottom: '16px' }}>

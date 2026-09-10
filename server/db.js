@@ -27,7 +27,7 @@ function initDb() {
     if (!fs.existsSync(DB_FILE) && fs.existsSync(LEGACY_DB_FILE)) {
       try {
         fs.copyFileSync(LEGACY_DB_FILE, DB_FILE);
-      } catch (e) {}
+      } catch {}
     }
 
     if (fs.existsSync(DB_FILE)) {

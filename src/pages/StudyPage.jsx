@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Check, X, RefreshCw } from '../components/Icons';
 import AudioPlayer from '../components/AudioPlayer';
 import { deconstructCharacter } from '../utils/radicalsData';
 import WritingTrainer from '../components/WritingTrainer';
+import { PageHeader, ProgressBar } from '../components/UI';
 import { API_BASE } from '../config';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/ToastContext';
 import { cacheCardsLocally, getCachedCardsLocally, queueOfflineProgress } from '../utils/offlineStorage';
 
-export default function StudyPage({ token, moduleId, mode, initialMode, spaced, initialSpaced, displayMode, onToggleDisplayMode, onBackToDashboard, onBack }) {
+export default function StudyPage({ token, moduleId, mode, initialMode, spaced, initialSpaced, displayMode, onBackToDashboard, onBack }) {
   const { showToast } = useToast();
   const handleBack = onBackToDashboard || onBack;
   const currentMode = mode || initialMode || 'cards';
@@ -25,7 +26,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
   // Состояния для режима Теста (Quiz)
   const [quizOptions, setQuizOptions] = useState([]);
   const [selectedOption, setSelectedOption] = useState(null);
-  const [isQuizCorrect, setIsQuizCorrect] = useState(null);
 
   // Состояния для режима Диктанта (Dictation)
   const [dictationInput, setDictationInput] = useState('');
@@ -67,7 +67,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
   };
 
   // Загрузка карточек
-  const fetchCards = async () => {
+  const fetchCards = useCallback(async () => {
     if (!moduleId) {
       setError('Идентификатор модуля не указан.');
       setLoading(false);
@@ -127,7 +127,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
     } finally {
       setLoading(false);
     }
-  };
+  }, [isSpaced, moduleId, showToast, token]);
 
   useEffect(() => {
     // Мгновенная гидратация карточек из локального кэша для старта за 0 мс
@@ -138,7 +138,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
       setLoading(false);
     }
     fetchCards();
-  }, [moduleId, isSpaced]);
+  }, [moduleId, fetchCards]);
 
   // Фоновый предзапуск генерации качественной озвучки Microsoft Edge Neural TTS (нормальная и медленная скорости)
   useEffect(() => {
@@ -179,7 +179,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
       // Заполняем варианты
       setQuizOptions(Array.from(options).sort(() => Math.random() - 0.5));
       setSelectedOption(null);
-      setIsQuizCorrect(null);
     }
   }, [cards, currentIndex, currentMode, allOriginalCards]);
 
@@ -233,7 +232,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
           queueOfflineProgress(card.id, knows ? 'know' : 'dont_know', moduleId);
         }
       }
-    } catch (err) {
+    } catch {
       queueOfflineProgress(card.id, knows ? 'know' : 'dont_know', moduleId);
       showToast('Прогресс сохранен офлайн 📶', 'info');
     }
@@ -274,7 +273,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
           queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
         }
       }
-    } catch (err) {
+    } catch {
       queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
     }
 
@@ -297,7 +296,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
     const isCorrect = option === correctTranslation;
 
     setSelectedOption(option);
-    setIsQuizCorrect(isCorrect);
 
     // Отправляем результат в базу
     try {
@@ -382,7 +380,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
     setSessionStats({ know: 0, dontKnow: 0 });
     setSessionCompleted(false);
     setSelectedOption(null);
-    setIsQuizCorrect(null);
     setDictationInput('');
     setIsDictationChecked(false);
     setIsDictationCorrect(false);
@@ -448,76 +445,16 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
   const currentCard = cards[currentIndex];
   const progressPercent = Math.round(((currentIndex) / cards.length) * 100);
 
-  return (
-    <div style={{ maxWidth: '650px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
-      {/* Прикрепленная верхняя панель навигации */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'rgba(10, 14, 23, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 20px',
-        margin: '-40px -20px 24px -20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={handleBack}
-            className="btn-neon btn-secondary"
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              fontWeight: '600',
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              borderRadius: '10px'
-            }}
-          >
-            <ArrowLeft size={16} /> Назад
-          </button>
-          
-          {/* Режим тренировки */}
-          <span style={{
-            fontSize: '0.8rem',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '20px',
-            padding: '4px 12px',
-            color: 'var(--neon-cyan)',
-            fontWeight: '600'
-          }}>
-            {currentMode === 'cards' && (isSpaced ? '⏰ Интервальные карточки' : '🗂️ Карточки (Все)')}
-            {currentMode === 'quiz' && '🎯 Викторина'}
-            {currentMode === 'dictation' && '✍️ Диктант'}
-          </span>
-        </div>
+  const modeTitle = currentMode === 'cards' ? (isSpaced ? 'Интервальное повторение' : 'Карточки') : currentMode === 'quiz' ? 'Тест' : 'Диктант';
 
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
-          Сессия: {currentIndex + 1} из {cards.length}
-        </span>
-      </div>
+  return (
+    <main className="page-container study-page">
+      <PageHeader title={modeTitle} eyebrow="Практика" meta={`${currentIndex + 1} из ${cards.length}`} onBack={handleBack} />
 
       {!sessionCompleted ? (
         <>
           {/* Прогресс-бар сессии */}
-          <div style={{ width: '100%', height: '4px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '2px', marginBottom: '40px', overflow: 'hidden' }}>
-            <div style={{
-              width: `${progressPercent}%`,
-              height: '100%',
-              background: 'var(--neon-cyan)',
-              boxShadow: '0 0 8px rgba(0, 242, 254, 0.5)',
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
+          <ProgressBar className="study-progress" value={progressPercent} label="Прогресс учебной сессии" />
 
           {/* 1. РЕЖИМ КАРТОЧЕК */}
           {currentMode === 'cards' && (
@@ -545,10 +482,13 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                 </button>
               </div>
 
-              <div className={`flip-card ${isFlipped ? 'flipped' : ''}`} onClick={handleCardFlip}>
+              <div
+                className={`flip-card ${isFlipped ? 'flipped' : ''}`}
+                onClick={handleCardFlip}
+              >
                 <div className="flip-card-inner">
                   {/* Лицевая сторона */}
-                  <div className="flip-card-front" style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
+                  <div className="flip-card-front" aria-hidden={isFlipped} inert={isFlipped} style={{ padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: '16px' }}>
                       {cardDirection === 'zh-to-ru' ? (
                         <>
@@ -579,7 +519,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                       )}
                     </div>
 
-                    <span style={{ 
+                    <button type="button" className="card-flip-action" onClick={(event) => { event.stopPropagation(); handleCardFlip(); }} style={{ 
                       fontSize: '0.85rem', 
                       color: 'var(--text-secondary)',
                       background: 'rgba(255, 255, 255, 0.03)',
@@ -589,11 +529,11 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                       marginTop: '12px'
                     }}>
                       Нажмите для перевода
-                    </span>
+                    </button>
                   </div>
 
                   {/* Обратная сторона */}
-                  <div className="flip-card-back" style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
+                  <div className="flip-card-back" aria-hidden={!isFlipped} inert={!isFlipped} style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', height: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
                     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <div className="chinese-char-sm" style={{ color: '#fff', fontSize: '2.6rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px' }}>
                         {currentCard.characters}
@@ -675,9 +615,9 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                       )}
                     </div>
                     
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                    <button type="button" className="card-flip-action" onClick={(event) => { event.stopPropagation(); handleCardFlip(); }} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
                       Кликните, чтобы скрыть ответ
-                    </span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -821,7 +761,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                         fontSize: '0.95rem',
                         justifyContent: 'center',
                         boxShadow: customShadow,
-                        transition: 'all 0.2s ease',
+                        transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease',
                         opacity: selectedOption !== null && !isSelected && !isCorrectAnswer ? 0.4 : 1
                       }}
                     >
@@ -866,7 +806,10 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
               {/* Форма ввода диктанта */}
               <form onSubmit={handleCheckDictation} style={{ width: '100%' }}>
                 <div style={{ marginBottom: '24px' }}>
+                  <label className="sr-only" htmlFor="dictation-answer">Введите пиньинь</label>
                   <input
+                    id="dictation-answer"
+                    name="dictationAnswer"
                     type="text"
                     className="input-glass"
                     placeholder="Введите пиньинь (например, ni hao)"
@@ -874,7 +817,7 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                     onChange={(e) => setDictationInput(e.target.value)}
                     disabled={isDictationChecked}
                     style={{ textAlign: 'center', fontSize: '1.2rem', letterSpacing: '0.5px' }}
-                    autoFocus
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -1011,6 +954,6 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
           );
         })()
       )}
-    </div>
+    </main>
   );
 }

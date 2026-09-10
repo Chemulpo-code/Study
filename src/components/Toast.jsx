@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { X, CheckCircle, AlertTriangle, Info, AlertCircle } from './Icons';
-
-const ToastContext = createContext(null);
+import { ToastContext } from './ToastContext';
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -38,7 +37,7 @@ export function ToastProvider({ children }) {
         maxWidth: '90vw',
         width: '380px',
         pointerEvents: 'none'
-      }}>
+      }} aria-live="polite" aria-atomic="false">
         {toasts.map(toast => {
           let bg = 'rgba(17, 25, 40, 0.9)';
           let border = '1px solid var(--neon-cyan)';
@@ -92,6 +91,7 @@ export function ToastProvider({ children }) {
 
               <button
                 onClick={() => removeToast(toast.id)}
+                aria-label="Закрыть уведомление"
                 style={{
                   background: 'none',
                   border: 'none',
@@ -105,7 +105,7 @@ export function ToastProvider({ children }) {
                   transition: 'color 0.2s'
                 }}
               >
-                <X size={16} />
+                <X size={16} aria-hidden="true" />
               </button>
             </div>
           );
@@ -113,13 +113,4 @@ export function ToastProvider({ children }) {
       </div>
     </ToastContext.Provider>
   );
-}
-
-export function useToast() {
-  const context = useContext(ToastContext);
-  if (!context) {
-    // Безопасный фоллбэк на случай вызова вне провайдера
-    return { showToast: (msg) => console.log('Toast:', msg) };
-  }
-  return context;
 }

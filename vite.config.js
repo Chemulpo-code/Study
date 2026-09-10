@@ -12,6 +12,11 @@ const buildTimestamp = new Date().toLocaleString('ru-RU', {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+    globals: true
+  },
   define: {
     __APP_VERSION__: JSON.stringify('1.9.6'),
     __BUILD_TIME__: JSON.stringify(buildTimestamp)

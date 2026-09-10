@@ -1,1075 +1,232 @@
-import React, { useState, useEffect } from 'react';
-import { LogOut, Plus, Edit, Trash, BookOpen, Book, RefreshCw } from '../components/Icons';
-import { API_BASE, APP_VERSION, BUILD_TIME } from '../config';
-import { useToast } from '../components/Toast';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { LogOut, Plus, RefreshCw } from '../components/Icons';
+import { API_BASE, APP_VERSION } from '../config';
+import { useToast } from '../components/ToastContext';
 import { cacheModulesLocally, getCachedModulesLocally } from '../utils/offlineStorage';
+import AppShell from '../components/AppShell';
+import Modal from '../components/Modal';
+import { Button, EmptyState } from '../components/UI';
+import { ModuleCard, StatsStrip, TodayPanel, TrainerGrid } from '../components/DashboardSections';
+import { selectContinueModule } from '../utils/dashboard';
 
-export default function DashboardPage({ 
-  token, user, displayMode, onToggleDisplayMode, onLogout, onSelectModuleStudy, onSelectModuleManage,
-  onGoToPinyinChart, onOpenPinyinChart,
-  onGoToToneTrainer, onOpenToneTrainer,
-  onGoToMatchGame, onOpenMatchGame,
-  onGoToSpeedSprint, onOpenSpeedSprint,
-  onGoToSentenceBuilder, onOpenSentenceBuilder,
-  onGoToFillInBlank, onOpenFillBlank,
-  onSelectHandsFree, onSelectDialogues
+export default function DashboardPage({
+  token,
+  user,
+  displayMode,
+  lastModuleId,
+  onToggleDisplayMode,
+  onLogout,
+  onSelectModuleStudy,
+  onSelectModuleManage,
+  onOpenPinyinChart,
+  onOpenToneTrainer,
+  onOpenMatchGame,
+  onOpenSpeedSprint,
+  onOpenSentenceBuilder,
+  onOpenFillBlank,
+  onSelectHandsFree,
+  onSelectDialogues
 }) {
   const { showToast } = useToast();
-  const handleOpenPinyinChart = onGoToPinyinChart || onOpenPinyinChart;
-  const handleOpenToneTrainer = onGoToToneTrainer || onOpenToneTrainer;
-  const handleOpenMatchGame = onGoToMatchGame || onOpenMatchGame;
-  const handleOpenSpeedSprint = onGoToSpeedSprint || onOpenSpeedSprint;
-  const handleOpenSentenceBuilder = onGoToSentenceBuilder || onOpenSentenceBuilder;
-  const handleOpenFillBlank = onGoToFillInBlank || onOpenFillBlank;
-
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [serverInfo, setServerInfo] = useState(null);
-  
-  // Состояния для HSK 1 и выбора режимов тренировки
-  const [importLoading, setImportLoading] = useState(false);
-  const [selectedModuleIdForStudy, setSelectedModuleIdForStudy] = useState(null);
+  const [selectedModuleId, setSelectedModuleId] = useState(null);
   const [isModeModalOpen, setIsModeModalOpen] = useState(false);
-
-  // Состояния для модального окна создания/редактирования модуля
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalDescription, setModalDescription] = useState('');
   const [editingModuleId, setEditingModuleId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const handleImportHsk1 = async () => {
-    setImportLoading(true);
+  const fetchModules = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/modules/import-hsk1`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Ошибка при импорте');
-      showToast('Модули HSK 1 успешно импортированы!', 'success');
-      fetchModules();
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
-  // Загрузка модулей с поддержкой офлайн-кэша и виртуального модуля ошибок
-  const fetchModules = async () => {
-    try {
-      // Параллельный запрос основных модулей и виртуального модуля ошибок
-      const [response, errBoxRes] = await Promise.all([
-        fetch(`${API_BASE}/api/modules`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE}/api/modules/error-box`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
+      const [response, errorBoxResponse] = await Promise.all([
+        fetch(`${API_BASE}/api/modules`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/api/modules/error-box`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
       ]);
-
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Ошибка при загрузке модулей');
+      if (!response.ok || !Array.isArray(data)) throw new Error(data.error || 'Не удалось загрузить модули. Обновите страницу.');
 
-      let combinedModules = [...data];
-
-      if (errBoxRes && errBoxRes.ok) {
-        try {
-          const errBox = await errBoxRes.json();
-          if (errBox && errBox.totalCards > 0) {
-            combinedModules = [errBox, ...combinedModules];
-          }
-        } catch (e) {}
+      let nextModules = [...data];
+      if (errorBoxResponse?.ok) {
+        const errorBox = await errorBoxResponse.json().catch(() => null);
+        if (errorBox?.totalCards > 0) nextModules = [errorBox, ...nextModules];
       }
-
-      setModules(combinedModules);
+      setModules(nextModules);
+      setError('');
       cacheModulesLocally(data);
-    } catch (err) {
+    } catch (requestError) {
       const cached = getCachedModulesLocally();
-      if (cached && cached.length > 0) {
-        setModules(cached);
-      } else {
-        setError(err.message);
-      }
+      if (cached?.length) setModules(cached);
+      else setError(requestError.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchServerVersion = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/version`);
-      if (res.ok) {
-        const data = await res.json();
-        setServerInfo(data);
-      } else {
-        setServerInfo({ version: 'старая', buildHash: null });
-      }
-    } catch (err) {
-      setServerInfo({ version: 'офлайн', buildHash: null });
-    }
-  };
+  }, [token]);
 
   useEffect(() => {
-    // Мгновенная загрузка модулей из кэша (0мс) на смартфонах/PWA
     const cached = getCachedModulesLocally();
-    if (cached && cached.length > 0) {
+    if (cached?.length) {
       setModules(cached);
       setLoading(false);
     }
     fetchModules();
-    fetchServerVersion();
-  }, []);
+    fetch(`${API_BASE}/api/version`)
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then(setServerInfo)
+      .catch(() => setServerInfo({ version: 'офлайн' }));
+  }, [fetchModules]);
 
-  // Открытие модального окна для создания нового модуля
-  const handleOpenCreateModal = () => {
+  const openCreateModal = () => {
     setEditingModuleId(null);
     setModalTitle('');
     setModalDescription('');
-    setIsModalOpen(true);
+    setIsModuleModalOpen(true);
   };
 
-  // Открытие модального окна для редактирования модуля
-  const handleOpenEditModal = (module) => {
+  const openEditModal = (module) => {
     setEditingModuleId(module.id);
     setModalTitle(module.title);
     setModalDescription(module.description || '');
-    setIsModalOpen(true);
+    setIsModuleModalOpen(true);
   };
 
-  const handleOpenStudyMode = (moduleId) => {
-    setSelectedModuleIdForStudy(moduleId);
+  const openStudyMode = (moduleId) => {
+    setSelectedModuleId(moduleId);
     setIsModeModalOpen(true);
   };
 
-  // Создание/сохранение модуля
-  const handleSaveModule = async (e) => {
-    e.preventDefault();
+  const saveModule = async (event) => {
+    event.preventDefault();
     if (!modalTitle.trim()) return;
-
     setActionLoading(true);
-    const endpoint = editingModuleId ? `/api/modules/${editingModuleId}` : '/api/modules';
-    const method = editingModuleId ? 'PUT' : 'POST';
-
     try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ title: modalTitle, description: modalDescription })
+      const response = await fetch(`${API_BASE}${editingModuleId ? `/api/modules/${editingModuleId}` : '/api/modules'}`, {
+        method: editingModuleId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: modalTitle.trim(), description: modalDescription.trim() })
       });
-
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Ошибка при сохранении');
-
-      setIsModalOpen(false);
-      showToast('Модуль успешно сохранен!', 'success');
+      if (!response.ok) throw new Error(data.error || 'Не удалось сохранить модуль.');
+      setIsModuleModalOpen(false);
+      showToast('Модуль сохранён', 'success');
       fetchModules();
-    } catch (err) {
-      showToast(err.message, 'error');
+    } catch (requestError) {
+      showToast(requestError.message, 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Удаление модуля
-  const handleDeleteModule = async (id, title) => {
-    if (!window.confirm(`Вы уверены, что хотите удалить модуль "${title}" и все его карточки?`)) return;
-
+  const deleteModule = async (id, title) => {
+    if (!window.confirm(`Удалить модуль «${title}» и все его карточки?`)) return;
     try {
-      const response = await fetch(`${API_BASE}/api/modules/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetch(`${API_BASE}/api/modules/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Ошибка при удалении');
-      showToast('Модуль удален', 'info');
+      if (!response.ok) throw new Error(data.error || 'Не удалось удалить модуль.');
+      showToast('Модуль удалён', 'info');
       fetchModules();
-    } catch (err) {
-      showToast(err.message, 'error');
+    } catch (requestError) {
+      showToast(requestError.message, 'error');
     }
   };
 
-  // Сброс прогресса модуля
-  const handleResetProgress = async (id, title) => {
-    if (!window.confirm(`Вы уверены, что хотите сбросить прогресс изучения для модуля "${title}"?`)) return;
-
+  const resetProgress = async (id, title) => {
+    if (!window.confirm(`Сбросить прогресс модуля «${title}»? Карточки сохранятся.`)) return;
     try {
-      const response = await fetch(`${API_BASE}/api/modules/${id}/reset-progress`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetch(`${API_BASE}/api/modules/${id}/reset-progress`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Ошибка при сбросе прогресса');
+      if (!response.ok) throw new Error(data.error || 'Не удалось сбросить прогресс.');
       showToast('Прогресс модуля сброшен', 'info');
       fetchModules();
-    } catch (err) {
-      showToast(err.message, 'error');
+    } catch (requestError) {
+      showToast(requestError.message, 'error');
     }
   };
 
-  const handleResetAllProgress = async () => {
-    if (!window.confirm('Вы уверены, что хотите сбросить ВСЕ свои коробки Лейтнера и статистику изучения по всем модулям? Все ваши слова сохранятся, но прогресс обнулится.')) return;
-
+  const resetAllProgress = async () => {
+    if (!window.confirm('Сбросить весь прогресс? Слова и модули сохранятся.')) return;
     try {
-      const response = await fetch(`${API_BASE}/api/progress/reset-all`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetch(`${API_BASE}/api/progress/reset-all`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Ошибка при сбросе прогресса');
-      showToast('Весь прогресс изучения успешно сброшен', 'info');
+      if (!response.ok) throw new Error(data.error || 'Не удалось сбросить прогресс.');
+      showToast('Весь прогресс сброшен', 'info');
       fetchModules();
-    } catch (err) {
-      showToast(err.message, 'error');
+    } catch (requestError) {
+      showToast(requestError.message, 'error');
     }
   };
 
-  // Расчет общей статистики
-  const totalModules = modules.length;
-  const totalCards = modules.reduce((acc, curr) => acc + (curr.totalCards || 0), 0);
-  const totalLearnedCards = modules.reduce((acc, curr) => acc + (curr.knownCards || 0), 0);
-  const overallProgress = totalCards > 0 ? Math.round((totalLearnedCards / totalCards) * 100) : 0;
-  const hasHsk1 = modules.some(m => m.title === 'Словарь HSK 1');
+  const regularModules = modules.filter((module) => module.id !== 'error-box');
+  const totalCards = regularModules.reduce((sum, module) => sum + (module.totalCards || 0), 0);
+  const learnedCards = regularModules.reduce((sum, module) => sum + (module.knownCards || 0), 0);
+  const overallProgress = totalCards ? Math.round((learnedCards / totalCards) * 100) : 0;
+  const continueModule = selectContinueModule(modules, lastModuleId);
+
+  const trainers = useMemo(() => [
+    { group: 'Произношение', mark: '音', title: 'Таблица пиньиня', description: 'Слоги и 4 тона', onClick: onOpenPinyinChart },
+    { group: 'Произношение', mark: '声', title: 'Тренажёр тонов', description: 'Различайте речь на слух', onClick: onOpenToneTrainer },
+    { group: 'Произношение', mark: '听', title: 'Слушай на ходу', description: 'Практика без экрана', onClick: onSelectHandsFree },
+    { group: 'Слова', mark: '配', title: 'Найди пару', description: 'Иероглиф и перевод', onClick: onOpenMatchGame },
+    { group: 'Предложения', mark: '句', title: 'Конструктор фраз', description: 'Соберите верный порядок', onClick: onOpenSentenceBuilder },
+    { group: 'Предложения', mark: '填', title: 'Контекстный пропуск', description: 'Найдите слово по смыслу', onClick: onOpenFillBlank },
+    { group: 'Предложения', mark: '谈', title: 'Микро-диалоги', description: 'Фразы в живом контексте', onClick: onSelectDialogues },
+    { group: 'Игры', mark: '速', title: 'Скоростной спринт', description: 'Ответы на время', onClick: onOpenSpeedSprint }
+  ], [onOpenFillBlank, onOpenMatchGame, onOpenPinyinChart, onOpenSentenceBuilder, onOpenSpeedSprint, onOpenToneTrainer, onSelectDialogues, onSelectHandsFree]);
+
+  const chooseMode = (mode, spaced = false) => {
+    setIsModeModalOpen(false);
+    onSelectModuleStudy(selectedModuleId, mode, spaced);
+  };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-      {/* Шапка дашборда */}
-      <header className="glass-panel dashboard-header">
-        <div className="dashboard-user-info">
-          <div>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: '600' }}>
-              Привет, <span style={{ color: 'var(--neon-cyan)', textShadow: '0 0 10px rgba(0, 242, 254, 0.2)' }}>{user.username}</span>!
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>
-              Давай продолжим изучать китайский
-            </p>
-          </div>
-          {/* Стрик дней */}
-          <div style={{
-            background: 'rgba(255, 102, 0, 0.1)',
-            border: '1px solid rgba(255, 102, 0, 0.3)',
-            borderRadius: '12px',
-            padding: '8px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            color: '#ff6600',
-            fontWeight: '600',
-            fontSize: '0.85rem',
-            boxShadow: '0 0 10px rgba(255, 102, 0, 0.1)'
-          }} title="Серия дней ежедневных занятий">
-            <span>🔥</span>
-            <span>{user.streak || 0} дней подряд</span>
-          </div>
-        </div>
-        
-        <div className="dashboard-actions">
-          <button
-            onClick={() => onToggleDisplayMode(displayMode === 'hanzi' ? 'pinyin' : 'hanzi')}
-            className="btn-neon btn-secondary"
-            style={{
-              padding: '8px 14px',
-              borderRadius: '12px',
-              fontSize: '0.85rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontWeight: '600',
-              border: displayMode === 'pinyin' ? '1px solid var(--neon-cyan)' : '1px solid rgba(255,255,255,0.1)',
-              background: displayMode === 'pinyin' ? 'rgba(0,242,254,0.1)' : 'rgba(255,255,255,0.03)'
-            }}
-            title="Переключить режим между Иероглифами и Пиньинем для новичков"
-          >
-            <span>🔤</span>
-            <span>{displayMode === 'pinyin' ? 'Режим: Пиньинь' : 'Режим: Иероглифы'}</span>
-          </button>
-
-          <button
-            onClick={handleResetAllProgress}
-            className="btn-neon btn-secondary"
-            style={{
-              padding: '8px 14px',
-              borderRadius: '12px',
-              fontSize: '0.85rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: '600',
-              border: '1px solid rgba(255,102,0,0.3)',
-              color: '#ff9900'
-            }}
-            title="Сбросить статус изучения и коробки Лейтнера по всем модулям"
-          >
-            <RefreshCw size={14} />
-            <span>Сбросить прогресс</span>
-          </button>
-
-          <button 
-            onClick={onLogout}
-            className="btn-neon btn-red"
-            style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-          >
-            <LogOut size={16} /> Выйти
-          </button>
+    <AppShell>
+      <header className="dashboard-topbar">
+        <a className="skip-link" href="#main-content">Перейти к содержанию</a>
+        <div className="brand-lockup"><span className="seal" aria-hidden="true">学</span><div><strong>Учебный кабинет</strong><small>你好, {user.username}</small></div></div>
+        <div className="dashboard-topbar__actions">
+          <Button variant="secondary" size="sm" onClick={() => onToggleDisplayMode(displayMode === 'hanzi' ? 'pinyin' : 'hanzi')}>{displayMode === 'pinyin' ? 'Пиньинь' : 'Иероглифы'}</Button>
+          <Button variant="ghost" size="sm" onClick={onLogout} aria-label="Выйти из аккаунта"><LogOut size={17} aria-hidden="true" /><span>Выйти</span></Button>
         </div>
       </header>
 
-      {/* Секция статистики */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '20px',
-        marginBottom: '40px'
-      }}>
-        {/* Карточка 1: Прогресс */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '14px',
-            background: 'rgba(0, 242, 254, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--neon-cyan)',
-            boxShadow: 'var(--glow-cyan)'
-          }}>
-            <BookOpen size={28} />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: '700' }}>{overallProgress}%</div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Общий прогресс</div>
-          </div>
-        </div>
+      <div id="main-dashboard">
+        <TodayPanel module={continueModule} onContinue={openStudyMode} onCreate={openCreateModal} />
+        <StatsStrip progress={overallProgress} modules={regularModules.length} cards={totalCards} streak={user.streak} />
 
-        {/* Карточка 2: Всего модулей */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '14px',
-            background: 'rgba(185, 0, 254, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#d156ff',
-            boxShadow: 'var(--glow-violet)'
-          }}>
-            <Book size={28} />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: '700' }}>{totalModules}</div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Модулей создано</div>
-          </div>
-        </div>
+        <section id="modules" className="dashboard-section">
+          <div className="section-heading"><div><span className="eyebrow">Ваша библиотека</span><h2>Модули</h2></div><Button variant="primary" onClick={openCreateModal}><Plus size={17} aria-hidden="true" />Создать модуль</Button></div>
+          {error && <div className="inline-alert" role="alert">{error}</div>}
+          {loading ? <div className="dashboard-loading"><span className="loader" /><span>Загружаем модули…</span></div> : modules.length ? (
+            <div className="module-grid">{modules.map((module) => <ModuleCard key={module.id} module={module} onLearn={openStudyMode} onManage={onSelectModuleManage} onEdit={openEditModal} onReset={resetProgress} onDelete={deleteModule} />)}</div>
+          ) : <EmptyState title="Модулей пока нет" description="Соберите первую небольшую тему и начните заниматься." action={<Button variant="primary" onClick={openCreateModal}>Создать модуль</Button>} />}
+        </section>
 
-        {/* Карточка 3: Всего карточек */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '14px',
-            background: 'rgba(0, 255, 136, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--neon-green)',
-            boxShadow: 'var(--glow-green)'
-          }}>
-            <Plus size={28} />
-          </div>
-          <div>
-            <div style={{ fontSize: '1.8rem', fontWeight: '700' }}>{totalCards}</div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Всего слов и фраз</div>
-          </div>
-        </div>
+        <section id="trainers" className="dashboard-section">
+          <div className="section-heading"><div><span className="eyebrow">Практика навыков</span><h2>Тренажёры</h2></div></div>
+          <TrainerGrid trainers={trainers} />
+        </section>
+
+        <footer className="app-footer"><span>Клиент v{APP_VERSION}</span><span className={serverInfo?.buildHash ? 'status-ok' : ''}>{serverInfo?.buildHash ? `Сервер v${serverInfo.version}` : 'Сервер офлайн'}</span><Button variant="ghost" size="sm" onClick={resetAllProgress}><RefreshCw size={15} aria-hidden="true" />Сбросить весь прогресс</Button></footer>
       </div>
 
+      <Modal open={isModuleModalOpen} title={editingModuleId ? 'Редактировать модуль' : 'Создать модуль'} onClose={() => setIsModuleModalOpen(false)} footer={<><Button type="button" onClick={() => setIsModuleModalOpen(false)}>Отмена</Button><Button type="submit" form="module-form" variant="primary" disabled={actionLoading}>{actionLoading ? 'Сохраняем…' : 'Сохранить'}</Button></>}>
+        <form id="module-form" onSubmit={saveModule}>
+          <div className="field"><label className="field-label" htmlFor="module-title">Название</label><input id="module-title" name="title" className="field-control" value={modalTitle} onChange={(event) => setModalTitle(event.target.value)} maxLength={40} autoComplete="off" placeholder="Например, Путешествие" required /></div>
+          <div className="field"><label className="field-label" htmlFor="module-description">Описание</label><textarea id="module-description" name="description" className="field-control" value={modalDescription} onChange={(event) => setModalDescription(event.target.value)} maxLength={150} rows={3} autoComplete="off" placeholder="Коротко опишите тему…" /></div>
+        </form>
+      </Modal>
 
-
-      {/* Заголовок списка модулей */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-      }}>
-        <h3 style={{ fontSize: '1.4rem', fontWeight: '600' }}>Мои модули</h3>
-        <button 
-          onClick={handleOpenCreateModal}
-          className="btn-neon btn-cyan"
-          style={{ padding: '10px 20px', fontSize: '0.95rem' }}
-        >
-          <Plus size={18} /> Создать модуль
-        </button>
-      </div>
-
-      {error && (
-        <div style={{
-          background: 'rgba(255, 51, 102, 0.1)',
-          border: '1px solid rgba(255, 51, 102, 0.3)',
-          color: '#ff668c',
-          padding: '16px',
-          borderRadius: '12px',
-          marginBottom: '24px'
-        }}>
-          {error}
+      <Modal open={isModeModalOpen} title="Как будем заниматься?" onClose={() => setIsModeModalOpen(false)}>
+        <div className="study-mode-list">
+          <button type="button" onClick={() => chooseMode('cards', true)}><strong>Интервальное повторение</strong><span>Только карточки, которые пора повторить</span></button>
+          <button type="button" onClick={() => chooseMode('cards')}><strong>Все карточки</strong><span>Пройти модуль по порядку</span></button>
+          <button type="button" onClick={() => chooseMode('quiz')}><strong>Тест</strong><span>Выбрать правильный перевод</span></button>
+          <button type="button" onClick={() => chooseMode('dictation')}><strong>Диктант</strong><span>Записать пиньинь на слух</span></button>
         </div>
-      )}
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)' }}>
-          Загрузка модулей...
-        </div>
-      ) : modules.length === 0 ? (
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '60px', color: 'var(--text-secondary)', marginBottom: '40px' }}>
-          <p style={{ marginBottom: '16px' }}>У вас пока нет ни одного модуля.</p>
-          <button 
-            onClick={handleOpenCreateModal}
-            className="btn-neon btn-cyan"
-            style={{ padding: '8px 16px' }}
-          >
-            <Plus size={16} /> Создать первый модуль
-          </button>
-        </div>
-      ) : (
-        /* Сетка модулей */
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '24px',
-          marginBottom: '40px'
-        }}>
-          {modules.map(module => (
-            <div key={module.id} className="glass-panel" style={{
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '240px',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              {/* Верхняя часть: Название и Меню редактирования */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <h4 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '8px', paddingRight: '40px' }}>
-                    {module.title}
-                  </h4>
-                  {/* Иконки редактирования/удаления */}
-                  <div style={{ display: 'flex', gap: '8px', position: 'absolute', top: '20px', right: '20px' }}>
-                    <button 
-                      onClick={() => handleOpenEditModal(module)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                      title="Редактировать"
-                    >
-                      <Edit size={16} className="btn-edit-hover" />
-                    </button>
-                    <button 
-                      onClick={() => handleResetProgress(module.id, module.title)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                      title="Сбросить прогресс"
-                    >
-                      <RefreshCw size={14} className="btn-edit-hover" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteModule(module.id, module.title)}
-                      style={{ background: 'none', border: 'none', color: 'var(--neon-red)', cursor: 'pointer' }}
-                      title="Удалить"
-                    >
-                      <Trash size={16} className="btn-edit-hover" />
-                    </button>
-                  </div>
-                </div>
-                <p style={{
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.85rem',
-                  lineHeight: '1.4',
-                  display: '-webkit-box',
-                  WebkitLineClamp: '2',
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  marginBottom: '16px'
-                }}>
-                  {module.description || 'Нет описания'}
-                </p>
-              </div>
-
-              {/* Нижняя часть: Прогресс и Кнопки */}
-              <div>
-                {/* Карточки и Прогресс-бар */}
-                <div style={{ marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                    <span>{module.totalCards} карточек</span>
-                    <span style={{ color: module.learnedPercentage > 0 ? 'var(--neon-green)' : 'var(--text-secondary)' }}>
-                      {module.learnedPercentage}% изучено
-                    </span>
-                  </div>
-                  {/* Контейнер прогресс-бара */}
-                  <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${module.learnedPercentage}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, var(--neon-cyan), var(--neon-green))',
-                      boxShadow: '0 0 8px rgba(0, 255, 136, 0.5)',
-                      borderRadius: '3px',
-                      transition: 'width 0.4s ease'
-                    }} />
-                  </div>
-                </div>
-
-                {/* Действия */}
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button 
-                    onClick={() => handleOpenStudyMode(module.id)}
-                    className="btn-neon btn-green"
-                    disabled={module.totalCards === 0}
-                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem', opacity: module.totalCards === 0 ? 0.5 : 1 }}
-                  >
-                    <BookOpen size={14} /> Учить
-                  </button>
-                  <button 
-                    onClick={() => onSelectModuleManage(module.id)}
-                    className="btn-neon btn-secondary"
-                    style={{ flex: 1, padding: '8px 12px', fontSize: '0.85rem' }}
-                  >
-                    <Edit size={14} /> Слова
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Секция тренажеров и игр */}
-      <div style={{ marginBottom: '40px' }}>
-        <h3 style={{ fontSize: '1.4rem', fontWeight: '600', marginBottom: '20px' }}>Тренажеры и Игры</h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '20px'
-        }}>
-          {/* Кнопка 1: Таблица пиньиня */}
-          <div 
-            onClick={handleOpenPinyinChart}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.05), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(0, 242, 254, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--neon-cyan)',
-              fontSize: '1.4rem',
-              boxShadow: 'var(--glow-cyan)'
-            }}>
-              拼
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Таблица слогов</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Интерактивная сетка произношения всех 4 тонов
-              </p>
-            </div>
-          </div>
-
-          {/* Кнопка 2: Тренажер тонов */}
-          <div 
-            onClick={handleOpenToneTrainer}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(185, 0, 254, 0.05), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(185, 0, 254, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#d156ff',
-              fontSize: '1.4rem',
-              boxShadow: 'var(--glow-violet)'
-            }}>
-              🔊
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Тренажер тонов</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Различение тонов на слух (игровой тест)
-              </p>
-            </div>
-          </div>
-
-          {/* Кнопка: Слушай на ходу (Hands-Free) */}
-          <div 
-            onClick={onSelectHandsFree}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(0, 242, 254, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--neon-cyan)',
-              fontSize: '1.4rem',
-              boxShadow: 'var(--glow-cyan)'
-            }}>
-              🎧
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Слушай на ходу</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Фоновый аудио-плеер карточек с таймингом
-              </p>
-            </div>
-          </div>
-
-          {/* Кнопка: Интерактивные микро-диалоги */}
-          <div 
-            onClick={onSelectDialogues}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.08), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(255, 204, 0, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffcc00',
-              fontSize: '1.4rem'
-            }}>
-              💬
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Микро-диалоги</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Живые сценарии общения по словам модуля
-              </p>
-            </div>
-          </div>
-
-          {/* Кнопка 3: Игра «Найди пару» */}
-          <div 
-            onClick={handleOpenMatchGame}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(0, 255, 136, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--neon-green)',
-              fontSize: '1.4rem',
-              boxShadow: 'var(--glow-green)'
-            }}>
-              🎮
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Игра «Найди пару»</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Сопоставление иероглифов и перевода на скорость
-              </p>
-            </div>
-          </div>
-
-          {/* Кнопка 4: Неоновый Спринт */}
-          <div 
-            onClick={handleOpenSpeedSprint}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(255, 51, 102, 0.05), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(255, 51, 102, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--neon-red)',
-              fontSize: '1.4rem',
-              boxShadow: '0 0 12px rgba(255, 51, 102, 0.3)'
-            }}>
-              🚀
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Неоновый Спринт</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Скоростной аркадный тест с множителями комбо
-              </p>
-            </div>
-          </div>
-
-          {/* Кнопка 5: Конструктор предложений */}
-          <div 
-            onClick={handleOpenSentenceBuilder}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.05), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(255, 204, 0, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffcc00',
-              fontSize: '1.4rem',
-              boxShadow: '0 0 12px rgba(255, 204, 0, 0.3)'
-            }}>
-              🧩
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Конструктор фраз</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Сборка китайских предложений из слов на слух
-              </p>
-            </div>
-          </div>
-
-          {/* Кнопка 6: Шпионский пропуск */}
-          <div 
-            onClick={handleOpenFillBlank}
-            className="glass-panel" 
-            style={{ 
-              padding: '20px 24px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '16px', 
-              cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.05), rgba(255, 255, 255, 0.02))'
-            }}
-          >
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '12px',
-              background: 'rgba(0, 242, 254, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--neon-cyan)',
-              fontSize: '1.4rem',
-              boxShadow: 'var(--glow-cyan)'
-            }}>
-              🕵️‍♂️
-            </div>
-            <div>
-              <h4 style={{ fontSize: '1.05rem', fontWeight: '600', color: '#fff' }}>Контекстный пропуск</h4>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>
-                Вставка недостающего слова в контекст предложения
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Модальное окно создания / редактирования */}
-      {isModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '20px'
-        }}>
-          <div className="glass-panel" style={{
-            width: '100%',
-            maxWidth: '480px',
-            padding: '30px',
-            borderRadius: '20px',
-            position: 'relative'
-          }}>
-            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '20px' }}>
-              {editingModuleId ? 'Редактировать модуль' : 'Создать новый модуль'}
-            </h3>
-
-            <form onSubmit={handleSaveModule}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Название модуля
-                </label>
-                <input 
-                  type="text" 
-                  className="input-glass"
-                  placeholder="например, Овощи и Фрукты"
-                  value={modalTitle}
-                  onChange={(e) => setModalTitle(e.target.value)}
-                  maxLength={40}
-                  required
-                />
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Описание модуля
-                </label>
-                <textarea 
-                  className="input-glass"
-                  placeholder="Небольшое описание или грамматическая тема..."
-                  value={modalDescription}
-                  onChange={(e) => setModalDescription(e.target.value)}
-                  maxLength={150}
-                  rows={3}
-                  style={{ resize: 'none', fontFamily: 'inherit' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  className="btn-neon btn-secondary"
-                  style={{ padding: '8px 16px' }}
-                >
-                  Отмена
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={actionLoading}
-                  className="btn-neon btn-cyan"
-                  style={{ padding: '8px 20px' }}
-                >
-                  {actionLoading ? 'Сохранение...' : 'Сохранить'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Модальное окно выбора режима изучения */}
-      {isModeModalOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '20px'
-        }}>
-          <div className="glass-panel" style={{
-            width: '100%',
-            maxWidth: '440px',
-            padding: '30px',
-            borderRadius: '24px',
-            position: 'relative',
-            textAlign: 'center'
-          }}>
-            <button 
-              onClick={() => setIsModeModalOpen(false)}
-              style={{
-                position: 'absolute',
-                top: '20px',
-                right: '20px',
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer'
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-
-            <h3 style={{ fontSize: '1.3rem', fontWeight: '700', marginBottom: '8px', color: '#fff' }}>
-              Выберите режим тренировки
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-              Как именно вы хотите повторять слова этого модуля?
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Режим 1: Интервальные карточки */}
-              <button 
-                onClick={() => {
-                  setIsModeModalOpen(false);
-                  onSelectModuleStudy(selectedModuleIdForStudy, 'cards', true);
-                }}
-                className="btn-neon btn-cyan"
-                style={{ width: '100%', padding: '14px', borderRadius: '14px', justifyContent: 'flex-start', textAlign: 'left' }}
-              >
-                <div style={{ fontSize: '0.95rem', fontWeight: '600' }}>⏰ Интервальное повторение</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '2px', fontWeight: '400' }}>
-                  Показ только карточек, пришедших к сроку повторения
-                </div>
-              </button>
-
-              {/* Режим 2: Все карточки */}
-              <button 
-                onClick={() => {
-                  setIsModeModalOpen(false);
-                  onSelectModuleStudy(selectedModuleIdForStudy, 'cards', false);
-                }}
-                className="btn-neon btn-secondary"
-                style={{ width: '100%', padding: '14px', borderRadius: '14px', justifyContent: 'flex-start', textAlign: 'left' }}
-              >
-                <div style={{ fontSize: '0.95rem', fontWeight: '600', color: '#fff' }}>🗂️ Все карточки подряд</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '2px', fontWeight: '400' }}>
-                  Пролистать все слова модуля по очереди
-                </div>
-              </button>
-
-              {/* Режим 3: Тест */}
-              <button 
-                onClick={() => {
-                  setIsModeModalOpen(false);
-                  onSelectModuleStudy(selectedModuleIdForStudy, 'quiz', false);
-                }}
-                className="btn-neon btn-violet"
-                style={{ width: '100%', padding: '14px', borderRadius: '14px', justifyContent: 'flex-start', textAlign: 'left' }}
-              >
-                <div style={{ fontSize: '0.95rem', fontWeight: '600' }}>🎯 Тест (Викторина)</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '2px', fontWeight: '400' }}>
-                  Выбор правильного варианта перевода из 4 предложенных
-                </div>
-              </button>
-
-              {/* Режим 4: Диктант */}
-              <button 
-                onClick={() => {
-                  setIsModeModalOpen(false);
-                  onSelectModuleStudy(selectedModuleIdForStudy, 'dictation', false);
-                }}
-                className="btn-neon btn-green"
-                style={{ width: '100%', padding: '14px', borderRadius: '14px', justifyContent: 'flex-start', textAlign: 'left' }}
-              >
-                <div style={{ fontSize: '0.95rem', fontWeight: '600' }}>✍️ Письменный диктант</div>
-                <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '2px', fontWeight: '400' }}>
-                  Написание пиньиня на слух по голосовому произношению
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Версионность сервиса */}
-      <footer style={{
-        marginTop: '60px',
-        padding: '24px 0 12px 0',
-        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px',
-        fontSize: '0.78rem',
-        color: 'var(--text-secondary)'
-      }}>
-        <div>
-          <span>📱 Клиент: <strong>v{APP_VERSION}</strong> ({BUILD_TIME})</span>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {serverInfo ? (
-            serverInfo.buildHash ? (
-              <span style={{
-                background: 'rgba(0, 255, 136, 0.1)',
-                border: '1px solid rgba(0, 255, 136, 0.25)',
-                color: 'var(--neon-green)',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                fontWeight: '500'
-              }}>
-                🟢 Сервер: v{serverInfo.version} ({serverInfo.buildHash})
-              </span>
-            ) : (
-              <span style={{
-                background: 'rgba(255, 51, 102, 0.1)',
-                border: '1px solid rgba(255, 51, 102, 0.25)',
-                color: '#ff668c',
-                padding: '4px 10px',
-                borderRadius: '12px',
-                fontWeight: '500'
-              }}>
-                ⚠️ Сервер отдает старый контейнер! Пересоберите стек в Portainer.
-              </span>
-            )
-          ) : (
-            <span>Загрузка версии сервера...</span>
-          )}
-        </div>
-      </footer>
-    </div>
+      </Modal>
+    </AppShell>
   );
 }

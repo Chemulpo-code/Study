@@ -1,19 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { API_BASE } from './config';
 import AuthPage from './pages/AuthPage';
-import DashboardPage from './pages/DashboardPage';
-import StudyPage from './pages/StudyPage';
-import ManageCardsPage from './pages/ManageCardsPage';
-import PinyinChartPage from './pages/PinyinChartPage';
-import ToneTrainerPage from './pages/ToneTrainerPage';
-import MatchGamePage from './pages/MatchGamePage';
-import SpeedSprintPage from './pages/SpeedSprintPage';
-import SentenceBuilderPage from './pages/SentenceBuilderPage';
-import FillInBlankPage from './pages/FillInBlankPage';
-import HandsFreeAudioPage from './pages/HandsFreeAudioPage';
-import ContextDialoguesPage from './pages/ContextDialoguesPage';
-import { useToast } from './components/Toast';
+import { useToast } from './components/ToastContext';
 import { syncOfflineProgressBatch } from './utils/offlineStorage';
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const StudyPage = lazy(() => import('./pages/StudyPage'));
+const ManageCardsPage = lazy(() => import('./pages/ManageCardsPage'));
+const PinyinChartPage = lazy(() => import('./pages/PinyinChartPage'));
+const ToneTrainerPage = lazy(() => import('./pages/ToneTrainerPage'));
+const MatchGamePage = lazy(() => import('./pages/MatchGamePage'));
+const SpeedSprintPage = lazy(() => import('./pages/SpeedSprintPage'));
+const SentenceBuilderPage = lazy(() => import('./pages/SentenceBuilderPage'));
+const FillInBlankPage = lazy(() => import('./pages/FillInBlankPage'));
+const HandsFreeAudioPage = lazy(() => import('./pages/HandsFreeAudioPage'));
+const ContextDialoguesPage = lazy(() => import('./pages/ContextDialoguesPage'));
+
+function PageLoader({ label = 'Открываем учебный кабинет…' }) {
+  return <div className="page-loader" role="status"><span className="loader" /><span>{label}</span></div>;
+}
 
 export default function App() {
   const { showToast } = useToast();
@@ -37,7 +42,7 @@ export default function App() {
     }
 
     return () => window.removeEventListener('online', handleOnline);
-  }, [token]);
+  }, [token, showToast]);
 
   useEffect(() => {
     if (token) {
@@ -141,22 +146,10 @@ export default function App() {
     changePage('dashboard');
   };
 
+  const withSuspense = (content) => <Suspense fallback={<PageLoader />}>{content}</Suspense>;
+
   if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: 'var(--bg-dark)',
-        color: 'var(--text-secondary)'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🔄</div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: '500' }}>Проверка авторизации...</h2>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Проверяем авторизацию…" />;
   }
 
   // Роутинг страниц
@@ -165,85 +158,76 @@ export default function App() {
   }
 
   if (currentPage === 'study' && activeModuleId) {
-    return (
+    return withSuspense(
       <StudyPage 
         token={token} 
         moduleId={activeModuleId} 
-        mode={studyMode}
         initialMode={studyMode}
-        spaced={spacedRepetition}
         initialSpaced={spacedRepetition}
         displayMode={displayMode}
         onBack={handleBackToDashboard}
-        onBackToDashboard={handleBackToDashboard} 
       />
     );
   }
 
   if (currentPage === 'manage' && activeModuleId) {
-    return (
+    return withSuspense(
       <ManageCardsPage 
         token={token} 
         moduleId={activeModuleId} 
-        onBack={handleBackToDashboard} 
-        onBackToDashboard={handleBackToDashboard}
+        onBack={handleBackToDashboard}
       />
     );
   }
 
   if (currentPage === 'pinyin') {
-    return <PinyinChartPage onBack={handleBackToDashboard} />;
+    return withSuspense(<PinyinChartPage onBack={handleBackToDashboard} />);
   }
 
   if (currentPage === 'tones') {
-    return <ToneTrainerPage onBack={handleBackToDashboard} />;
+    return withSuspense(<ToneTrainerPage onBack={handleBackToDashboard} />);
   }
 
   if (currentPage === 'match-game') {
-    return <MatchGamePage token={token} onBack={handleBackToDashboard} />;
+    return withSuspense(<MatchGamePage token={token} onBack={handleBackToDashboard} />);
   }
 
   if (currentPage === 'speed-sprint') {
-    return <SpeedSprintPage token={token} displayMode={displayMode} onBack={handleBackToDashboard} />;
+    return withSuspense(<SpeedSprintPage token={token} displayMode={displayMode} onBack={handleBackToDashboard} />);
   }
 
   if (currentPage === 'sentence-builder') {
-    return <SentenceBuilderPage token={token} onBack={handleBackToDashboard} />;
+    return withSuspense(<SentenceBuilderPage token={token} onBack={handleBackToDashboard} />);
   }
 
   if (currentPage === 'fill-blank') {
-    return <FillInBlankPage token={token} displayMode={displayMode} onBack={handleBackToDashboard} />;
+    return withSuspense(<FillInBlankPage token={token} onBack={handleBackToDashboard} />);
   }
 
   if (currentPage === 'hands-free') {
-    return <HandsFreeAudioPage token={token} modules={modulesList} onBack={handleBackToDashboard} />;
+    return withSuspense(<HandsFreeAudioPage token={token} modules={modulesList} onBack={handleBackToDashboard} />);
   }
 
   if (currentPage === 'dialogues') {
-    return <ContextDialoguesPage token={token} modules={modulesList} onBack={handleBackToDashboard} />;
+    return withSuspense(<ContextDialoguesPage token={token} modules={modulesList} onBack={handleBackToDashboard} />);
   }
 
-  return (
+  return withSuspense(
     <DashboardPage 
       user={user} 
       token={token} 
       displayMode={displayMode}
+      lastModuleId={activeModuleId}
       onToggleDisplayMode={handleToggleDisplayMode}
       onLogout={handleLogout}
       onSelectModuleStudy={handleSelectModuleStudy}
       onSelectModuleManage={handleSelectModuleManage}
       onOpenPinyinChart={() => changePage('pinyin')}
-      onGoToPinyinChart={() => changePage('pinyin')}
       onOpenToneTrainer={() => changePage('tones')}
-      onGoToToneTrainer={() => changePage('tones')}
       onOpenMatchGame={() => changePage('match-game')}
-      onGoToMatchGame={() => changePage('match-game')}
       onOpenSpeedSprint={() => changePage('speed-sprint')}
-      onGoToSpeedSprint={() => changePage('speed-sprint')}
       onOpenSentenceBuilder={() => changePage('sentence-builder')}
-      onGoToSentenceBuilder={() => changePage('sentence-builder')}
       onOpenFillBlank={() => changePage('fill-blank')}
-      onGoToFillInBlank={() => changePage('fill-blank')}
       onSelectHandsFree={() => changePage('hands-free')}
       onSelectDialogues={() => changePage('dialogues')}
     />

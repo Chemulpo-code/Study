@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft } from '../components/Icons';
+import { PageHeader } from '../components/UI';
 
 // Полный список инициалей (строки)
 const initials = ['', 'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'zh', 'ch', 'sh', 'r', 'z', 'c', 's', 'y', 'w'];
@@ -167,7 +167,7 @@ export default function PinyinChartPage({ onBack }) {
       try {
         window.activeAudio.pause();
         window.activeAudio.currentTime = 0;
-      } catch (e) {}
+      } catch {}
     }
     
     const audio = new Audio(url);
@@ -189,46 +189,8 @@ export default function PinyinChartPage({ onBack }) {
   };
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
-      {/* Прикрепленная верхняя панель навигации */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'rgba(10, 14, 23, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 20px',
-        margin: '-40px -20px 24px -20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={onBack} 
-            className="btn-neon btn-secondary" 
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              fontWeight: '600',
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              borderRadius: '10px'
-            }}
-          >
-            <ArrowLeft size={16} /> Назад
-          </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#fff', margin: 0 }}>
-            拼 Таблица слогов (Пиньинь)
-          </h2>
-        </div>
-      </div>
+    <div className="page-container wide-page">
+      <PageHeader title="Таблица пиньиня" eyebrow="Произношение · 拼音" onBack={onBack} />
 
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h2 className="chinese-char-sm" style={{ 

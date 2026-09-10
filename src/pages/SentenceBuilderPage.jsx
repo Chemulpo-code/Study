@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, RefreshCw } from '../components/Icons';
 import AudioPlayer from '../components/AudioPlayer';
 import { API_BASE } from '../config';
+import { PageHeader } from '../components/UI';
 
 // Фолбек-банк базовых грамматических фраз
 const DEFAULT_SENTENCES = [
@@ -13,7 +13,7 @@ const DEFAULT_SENTENCES = [
   { chinese: "今天天气非常好。", pinyin: "jīntiān tiānqì fēicháng hǎo.", translation: "Сегодня очень хорошая погода." }
 ];
 
-export default function SentenceBuilderPage({ token, displayMode, onBack }) {
+export default function SentenceBuilderPage({ token, onBack }) {
   const [loading, setLoading] = useState(true);
   const [sentences, setSentences] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -136,49 +136,8 @@ export default function SentenceBuilderPage({ token, displayMode, onBack }) {
   const currentSentence = sentences[currentIndex];
 
   return (
-    <div style={{ maxWidth: '750px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
-      {/* Прикрепленная верхняя панель навигации */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'rgba(10, 14, 23, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 20px',
-        margin: '-40px -20px 24px -20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={onBack} 
-            className="btn-neon btn-secondary" 
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              fontWeight: '600',
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              borderRadius: '10px'
-            }}
-          >
-            <ArrowLeft size={16} /> Назад
-          </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#fff', margin: 0 }}>
-            🧩 Конструктор фраз
-          </h2>
-        </div>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Собрано верно: <span style={{ color: 'var(--neon-green)', fontWeight: '700' }}>{score}</span>
-        </div>
-      </div>
+    <div className="page-container medium-page">
+      <PageHeader title="Конструктор фраз" eyebrow="Предложения · 句子" meta={`Верно: ${score}`} onBack={onBack} />
 
       <div className="glass-panel" style={{ padding: '36px 30px', borderRadius: '24px' }}>
         <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--neon-cyan)', letterSpacing: '1px', display: 'block', marginBottom: '12px' }}>
@@ -205,7 +164,7 @@ export default function SentenceBuilderPage({ token, displayMode, onBack }) {
           alignItems: 'center',
           marginBottom: '32px',
           boxShadow: isChecked && isCorrect ? 'var(--glow-green)' : (isChecked ? '0 0 12px rgba(255,51,102,0.3)' : 'none'),
-          transition: 'all 0.3s ease'
+          transition: 'border-color 0.3s ease, box-shadow 0.3s ease'
         }}>
           {builtBlocks.length === 0 ? (
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic' }}>

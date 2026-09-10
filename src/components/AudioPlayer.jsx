@@ -19,10 +19,10 @@ export default function AudioPlayer({ text, className = '', style = {} }) {
       try {
         window.activeAudio.pause();
         window.activeAudio.currentTime = 0;
-      } catch (err) {}
+      } catch {}
     }
     if ('speechSynthesis' in window) {
-      try { window.speechSynthesis.cancel(); } catch (err) {}
+      try { window.speechSynthesis.cancel(); } catch {}
     }
 
     // Определяем скорость для ТЕКУЩЕГО нажатия
@@ -64,7 +64,7 @@ export default function AudioPlayer({ text, className = '', style = {} }) {
         border: isSlowNext ? '1px solid rgba(212, 163, 115, 0.5)' : '1px solid rgba(0, 242, 254, 0.3)',
         background: isSlowNext ? 'rgba(212, 163, 115, 0.12)' : 'rgba(0, 242, 254, 0.05)',
         cursor: 'pointer',
-        transition: 'all 0.2s ease',
+        transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease',
         gap: '4px',
         ...style
       }}

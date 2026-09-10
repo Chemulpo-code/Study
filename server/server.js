@@ -8,7 +8,6 @@ import db from './db.js';
 import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
-import os from 'os';
 import crypto from 'crypto';
 
 const app = express();

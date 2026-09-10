@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, RefreshCw, Check, X } from '../components/Icons';
+import { RefreshCw } from '../components/Icons';
+import { PageHeader, ProgressBar } from '../components/UI';
 
 // Слог-пул для тренировок
 const practiceSyllables = [
@@ -96,7 +97,7 @@ export default function ToneTrainerPage({ onBack }) {
       try {
         window.activeAudio.pause();
         window.activeAudio.currentTime = 0;
-      } catch (e) {}
+      } catch {}
     }
     
     const audio = new Audio(url);
@@ -111,7 +112,7 @@ export default function ToneTrainerPage({ onBack }) {
         try {
           window.activeAudio.pause();
           window.activeAudio.currentTime = 0;
-        } catch (e) {}
+        } catch {}
       }
       
       const fallbackAudio = new Audio(ttsUrl);
@@ -154,54 +155,13 @@ export default function ToneTrainerPage({ onBack }) {
   const progressPercent = Math.round((currentIndex / questions.length) * 100);
 
   return (
-    <div style={{ maxWidth: '650px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
-      {/* Прикрепленная верхняя панель навигации */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'rgba(10, 14, 23, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 20px',
-        margin: '-40px -20px 24px -20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={onBack} 
-            className="btn-neon btn-secondary" 
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              fontWeight: '600',
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              borderRadius: '10px'
-            }}
-          >
-            <ArrowLeft size={16} /> Назад
-          </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#fff', margin: 0 }}>
-            🎧 Тренажер тонов
-          </h2>
-        </div>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          Вопрос: {currentIndex + 1} из {questions.length}
-        </span>
-      </div>
+    <div className="page-container compact-page">
+      <PageHeader title="Тренажёр тонов" eyebrow="Произношение · 声调" meta={`${currentIndex + 1} из ${questions.length}`} onBack={onBack} />
 
       {!gameCompleted ? (
         <>
           {/* Шкала прогресса */}
-          <div style={{ width: '100%', height: '4px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '2px', marginBottom: '40px', overflow: 'hidden' }}>
+          <div style={{ display: 'none' }} aria-hidden="true">
             <div style={{
               width: `${progressPercent}%`,
               height: '100%',
@@ -210,6 +170,7 @@ export default function ToneTrainerPage({ onBack }) {
               transition: 'width 0.3s ease'
             }} />
           </div>
+          <ProgressBar className="study-progress" value={progressPercent} label="Прогресс тренировки тонов" />
 
           {/* Карточка вопроса */}
           <div className="glass-panel" style={{
@@ -321,7 +282,7 @@ export default function ToneTrainerPage({ onBack }) {
                     flexDirection: 'column',
                     justifyContent: 'center',
                     boxShadow: shadow,
-                    transition: 'all 0.2s ease',
+                    transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease',
                     opacity: isAnswered && !isSelected && !isCorrectAnswer ? 0.4 : 1
                   }}
                 >

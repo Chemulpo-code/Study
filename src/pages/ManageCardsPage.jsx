@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Edit, Trash, RefreshCw, X } from '../components/Icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit, Trash } from '../components/Icons';
 import { API_BASE } from '../config';
-import { useToast } from '../components/Toast';
+import { useToast } from '../components/ToastContext';
+import { PageHeader } from '../components/UI';
+import Modal from '../components/Modal';
 
 import { cacheCardsLocally, getCachedCardsLocally } from '../utils/offlineStorage';
 
@@ -71,7 +73,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   };
 
   // Загрузка модуля и его карточек
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       // 1. Получаем модули для поиска нужного названия
       const moduleRes = await fetch(`${API_BASE}/api/modules`, {
@@ -97,7 +99,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     } finally {
       setLoading(false);
     }
-  };
+  }, [moduleId, token]);
 
   useEffect(() => {
     const cached = getCachedCardsLocally(moduleId);
@@ -106,7 +108,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       setLoading(false);
     }
     loadData();
-  }, [moduleId]);
+  }, [moduleId, loadData]);
 
   const handleOpenCreateForm = () => {
     setEditingCardId(null);
@@ -216,51 +218,8 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   }
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '32px 20px 110px 20px' }}>
-      {/* Прикрепленная верхняя панель навигации */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'rgba(10, 14, 23, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 20px',
-        margin: '-32px -20px 24px -20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={handleBack}
-            className="btn-neon btn-secondary"
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem',
-              fontWeight: '600',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              borderRadius: '10px'
-            }}
-          >
-            <ArrowLeft size={16} /> Назад
-          </button>
-          <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0 }}>
-              Модуль: <span style={{ color: 'var(--neon-cyan)' }}>{module?.title}</span>
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '2px 0 0 0' }}>
-              Всего слов: {cards.length}
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="page-container manage-page">
+      <PageHeader title={module?.title || 'Слова модуля'} eyebrow="Библиотека" meta={`${cards.length} карточек`} onBack={handleBack} />
 
       {error && (
         <div style={{
@@ -280,6 +239,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
         <input 
           type="text" 
           placeholder="Поиск по иероглифам, пиньиню или переводу..."
+          aria-label="Поиск карточек"
           className="input-glass"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -352,8 +312,9 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                   onClick={() => handleDeleteCard(card.id, card.characters)}
                   className="btn-neon btn-red"
                   style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  aria-label={`Удалить карточку ${card.characters}`}
                 >
-                  <Trash size={14} />
+                  <Trash size={14} aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -362,47 +323,20 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       )}
 
       {/* Модальное окно формы карточки */}
-      {isFormOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.65)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '20px'
-        }}>
-          <div className="glass-panel" style={{
-            width: '100%',
-            maxWidth: '520px',
-            padding: '30px',
-            borderRadius: '20px',
-            maxHeight: '90vh',
-            overflowY: 'auto'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: '600' }}>
-                {editingCardId ? 'Редактировать карточку' : 'Добавить новую карточку'}
-              </h3>
-              <button 
-                onClick={() => setIsFormOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
+      <Modal
+        open={isFormOpen}
+        title={editingCardId ? 'Редактировать карточку' : 'Добавить новую карточку'}
+        onClose={() => setIsFormOpen(false)}
+        className="manage-card-modal"
+      >
             <form onSubmit={handleSaveCard}>
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <label htmlFor="card-characters" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Китайские иероглифы (упрощенные)
                 </label>
                 <input 
+                  id="card-characters"
+                  name="characters"
                   type="text" 
                   className="input-glass"
                   placeholder="например, 苹果"
@@ -413,10 +347,12 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <label htmlFor="card-pinyin" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Пиньинь (транскрипция)
                 </label>
                 <input 
+                  id="card-pinyin"
+                  name="pinyin"
                   type="text" 
                   className="input-glass"
                   placeholder="Автогенерация (можно оставить пустым)"
@@ -426,10 +362,12 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
               </div>
 
               <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                <label htmlFor="card-translation" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Перевод на русский
                 </label>
                 <input 
+                  id="card-translation"
+                  name="translation"
                   type="text" 
                   className="input-glass"
                   placeholder="например, яблоко"
@@ -475,6 +413,8 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 
                 <div style={{ marginBottom: '10px' }}>
                   <input 
+                    aria-label="Пример на китайском"
+                    name="exampleChinese"
                     type="text" 
                     className="input-glass"
                     placeholder="Пример на китайском (например, 我喜欢吃苹果。)"
@@ -485,6 +425,8 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 
                 <div style={{ marginBottom: '10px' }}>
                   <input 
+                    aria-label="Пиньинь примера"
+                    name="examplePinyin"
                     type="text" 
                     className="input-glass"
                     placeholder="Пиньинь примера (например, wǒ xǐhuan chī píngguǒ.)"
@@ -495,6 +437,8 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 
                 <div>
                   <input 
+                    aria-label="Перевод примера"
+                    name="exampleTranslation"
                     type="text" 
                     className="input-glass"
                     placeholder="Перевод примера (например, Я люблю есть яблоки.)"
@@ -523,9 +467,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Прикрепленная внизу экрана по центру кнопка "Добавить слово / фразу" (Sticky FAB) */}
       <div style={{
@@ -548,10 +490,6 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
             fontSize: '0.95rem', 
             fontWeight: '600',
             borderRadius: '30px',
-            boxShadow: '0 8px 32px rgba(0, 242, 254, 0.4), 0 4px 16px rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(0, 242, 254, 0.5)',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'

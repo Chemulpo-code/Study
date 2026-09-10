@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Volume2, Eye, EyeOff } from '../components/Icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Volume2 } from '../components/Icons';
 import { API_BASE } from '../config';
+import { PageHeader } from '../components/UI';
 
 export default function ContextDialoguesPage({ token, modules, onBack }) {
   const [selectedModuleId, setSelectedModuleId] = useState(modules[0]?.id || '');
@@ -10,13 +11,7 @@ export default function ContextDialoguesPage({ token, modules, onBack }) {
   const [showTranslation, setShowTranslation] = useState(true);
   const [playingLineId, setPlayingLineId] = useState(null);
 
-  useEffect(() => {
-    if (selectedModuleId) {
-      fetchDialogues(selectedModuleId);
-    }
-  }, [selectedModuleId]);
-
-  const fetchDialogues = async (moduleId) => {
+  const fetchDialogues = useCallback(async (moduleId) => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/modules/${moduleId}/dialogues`, {
@@ -29,14 +24,20 @@ export default function ContextDialoguesPage({ token, modules, onBack }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (selectedModuleId) {
+      fetchDialogues(selectedModuleId);
+    }
+  }, [selectedModuleId, fetchDialogues]);
 
   const playLineAudio = (text, lineId) => {
     setPlayingLineId(lineId);
     const url = `${API_BASE}/api/tts?text=${encodeURIComponent(text)}&rate=normal`;
 
     if (window.activeAudio) {
-      try { window.activeAudio.pause(); } catch (e) {}
+      try { window.activeAudio.pause(); } catch {}
     }
 
     const audio = new Audio(url);
@@ -61,48 +62,9 @@ export default function ContextDialoguesPage({ token, modules, onBack }) {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px 100px 20px' }}>
-      {/* Прикрепленная верхняя панель навигации */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        background: 'rgba(10, 14, 23, 0.88)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 20px',
-        margin: '-40px -20px 24px -20px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button 
-            onClick={onBack} 
-            className="btn-neon btn-secondary" 
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              fontWeight: '600',
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              borderRadius: '10px'
-            }}
-          >
-            <ArrowLeft size={16} /> Назад
-          </button>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#fff', margin: 0 }}>
-            💬 Интерактивные микро-диалоги
-          </h2>
-        </div>
-
-        {/* Переключатели пиньиня и перевода */}
-        <div style={{ display: 'flex', gap: '10px' }}>
+    <div className="page-container medium-page">
+      <PageHeader title="Микро-диалоги" eyebrow="Речь · 对话" onBack={onBack} actions={
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={() => setShowPinyin(p => !p)}
             className={`btn-neon ${showPinyin ? 'btn-cyan' : 'btn-secondary'}`}
@@ -118,14 +80,16 @@ export default function ContextDialoguesPage({ token, modules, onBack }) {
             🌐 Перевод
           </button>
         </div>
-      </div>
+      } />
 
       {/* Селектор модуля */}
       <div style={{ marginBottom: '28px' }}>
-        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+        <label htmlFor="dialogue-module" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
           Выберите модуль диалогов:
         </label>
         <select
+          id="dialogue-module"
+          name="module"
           value={selectedModuleId}
           onChange={(e) => setSelectedModuleId(e.target.value)}
           style={{
@@ -135,8 +99,7 @@ export default function ContextDialoguesPage({ token, modules, onBack }) {
             background: 'rgba(255, 255, 255, 0.04)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
             color: '#fff',
-            fontSize: '0.95rem',
-            outline: 'none'
+            fontSize: '0.95rem'
           }}
         >
           {modules.map(m => (

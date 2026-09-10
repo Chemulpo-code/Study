@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { RefreshCw } from './Icons';
 
 export default function WritingTrainer({ word }) {
@@ -16,7 +16,10 @@ export default function WritingTrainer({ word }) {
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
   // Фильтруем только иероглифы (убираем знаки препинания и пробелы)
-  const characters = word ? word.split('').filter(char => /\p{Script=Han}/u.test(char)) : [];
+  const characters = useMemo(
+    () => word ? word.split('').filter(char => /\p{Script=Han}/u.test(char)) : [],
+    [word]
+  );
 
   useEffect(() => {
     if (characters.length > 0) {
@@ -24,7 +27,7 @@ export default function WritingTrainer({ word }) {
     } else {
       setSelectedChar('');
     }
-  }, [word]);
+  }, [characters]);
 
   // Загружаем внешнюю библиотеку HanziWriter для анимации и проверки порядка черт
   useEffect(() => {
@@ -111,14 +114,7 @@ export default function WritingTrainer({ word }) {
     }
   };
 
-  // --- Код для свободного режима рисования (Canvas) ---
-  useEffect(() => {
-    if (mode === 'free') {
-      drawInit();
-    }
-  }, [selectedChar, showOutline, mode]);
-
-  const drawInit = () => {
+  const drawInit = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -154,7 +150,14 @@ export default function WritingTrainer({ word }) {
       ctx.textBaseline = 'middle';
       ctx.fillText(selectedChar, canvas.width / 2, canvas.height / 2 + 10);
     }
-  };
+  }, [selectedChar, showOutline]);
+
+  // --- Код для свободного режима рисования (Canvas) ---
+  useEffect(() => {
+    if (mode === 'free') {
+      drawInit();
+    }
+  }, [mode, drawInit]);
 
   const startDrawing = (e) => {
     const canvas = canvasRef.current;
@@ -233,7 +236,7 @@ export default function WritingTrainer({ word }) {
             cursor: 'pointer',
             background: mode === 'check' ? 'var(--neon-cyan)' : 'transparent',
             color: mode === 'check' ? '#000' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
+            transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease'
           }}
         >
           🎯 Проверка черт
@@ -250,7 +253,7 @@ export default function WritingTrainer({ word }) {
             cursor: 'pointer',
             background: mode === 'free' ? 'var(--neon-cyan)' : 'transparent',
             color: mode === 'free' ? '#000' : 'var(--text-secondary)',
-            transition: 'all 0.2s ease'
+            transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease'
           }}
         >
           🖌️ Свободная пропись
@@ -275,7 +278,7 @@ export default function WritingTrainer({ word }) {
                 fontFamily: 'Noto Sans SC',
                 cursor: 'pointer',
                 fontWeight: '600',
-                transition: 'all 0.2s ease'
+                transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease'
               }}
             >
               {char}
@@ -297,7 +300,7 @@ export default function WritingTrainer({ word }) {
             border: getContainerBorderStyle(),
             boxShadow: getContainerGlowStyle(),
             animation: quizStatus === 'mistake' ? 'shake 0.3s cubic-bezier(.36,.07,.19,.97) both' : 'none',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+            transition: 'background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease'
           }}>
             {/* Сетка Тяньцзигэ на фоне */}
             <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>

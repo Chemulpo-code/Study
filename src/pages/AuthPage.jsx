@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff } from '../components/Icons';
 import { API_BASE } from '../config';
+import { Button, Panel } from '../components/UI';
 
 export default function AuthPage({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -49,190 +50,63 @@ export default function AuthPage({ onLoginSuccess }) {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '20px'
-    }}>
-      <div className="glass-panel" style={{
-        width: '100%',
-        maxWidth: '420px',
-        padding: '40px 30px',
-        borderRadius: '24px',
-        boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 className="chinese-char-sm" style={{ 
-            fontSize: '2.5rem', 
-            fontWeight: '700', 
-            background: 'linear-gradient(45deg, var(--neon-cyan), var(--neon-violet))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            letterSpacing: '1px',
-            marginBottom: '8px'
-          }}>
-            学习卡片
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            Китайский по карточкам с синхронизацией
-          </p>
+    <main className="auth-page">
+      <section className="auth-intro" aria-labelledby="auth-title">
+        <span className="auth-intro__mark" aria-hidden="true">习</span>
+        <span className="eyebrow">Ежедневная практика</span>
+        <h1 id="auth-title">Китайский, который остаётся с вами.</h1>
+        <p>Карточки, речь и письмо в спокойном ритме — на любом устройстве.</p>
+        <div className="auth-intro__note">
+          <strong>一点一点</strong>
+          <span>Шаг за шагом</span>
         </div>
+      </section>
 
-        {/* Табы */}
-        <div style={{
-          display: 'flex',
-          background: 'rgba(255, 255, 255, 0.03)',
-          padding: '4px',
-          borderRadius: '12px',
-          border: '1px solid var(--border-color)',
-          marginBottom: '24px'
-        }}>
-          <button 
-            type="button"
-            onClick={() => { setIsLogin(true); setError(''); }}
-            className={`btn-neon ${isLogin ? 'btn-cyan' : 'btn-secondary'}`}
-            style={{
-              flex: 1,
-              padding: '10px',
-              border: 'none',
-              boxShadow: isLogin ? 'var(--glow-cyan)' : 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            Вход
-          </button>
-          <button 
-            type="button"
-            onClick={() => { setIsLogin(false); setError(''); }}
-            className={`btn-neon ${!isLogin ? 'btn-violet' : 'btn-secondary'}`}
-            style={{
-              flex: 1,
-              padding: '10px',
-              border: 'none',
-              boxShadow: !isLogin ? 'var(--glow-violet)' : 'none',
-              fontSize: '0.9rem'
-            }}
-          >
-            Регистрация
-          </button>
-        </div>
-
-        {error && (
-          <div style={{
-            background: 'rgba(255, 51, 102, 0.1)',
-            border: '1px solid rgba(255, 51, 102, 0.3)',
-            color: '#ff668c',
-            padding: '12px',
-            borderRadius: '12px',
-            fontSize: '0.9rem',
-            marginBottom: '20px',
-            textAlign: 'center'
-          }}>
-            {error}
+      <Panel className="auth-card">
+        <div className="auth-card__heading">
+          <span className="seal" aria-hidden="true">学</span>
+          <div>
+            <span className="eyebrow">Учебный кабинет</span>
+            <h2>{isLogin ? 'С возвращением' : 'Начните путь'}</h2>
           </div>
-        )}
+        </div>
+
+        <div className="auth-tabs" role="tablist" aria-label="Авторизация">
+          <button type="button" role="tab" aria-selected={isLogin} onClick={() => { setIsLogin(true); setError(''); }}>Вход</button>
+          <button type="button" role="tab" aria-selected={!isLogin} onClick={() => { setIsLogin(false); setError(''); }}>Регистрация</button>
+        </div>
+
+        {error && <div className="auth-error" role="alert" aria-live="polite">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          {/* Поле логина */}
-          <div style={{ marginBottom: '18px', position: 'relative' }}>
-            <span style={{
-              position: 'absolute',
-              left: '14px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <User size={18} />
-            </span>
-            <input 
-              type="text" 
-              placeholder="Имя пользователя"
-              className="input-glass"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={loading}
-              style={{ paddingLeft: '44px' }}
-            />
+          <div className="field">
+            <label className="field-label" htmlFor="username">Имя пользователя</label>
+            <div className="field-with-icon">
+              <User size={18} aria-hidden="true" />
+              <input id="username" name="username" type="text" autoComplete="username" placeholder="Например, Sergei" className="field-control" value={username} onChange={(e) => setUsername(e.target.value)} disabled={loading} />
+            </div>
           </div>
 
-          {/* Поле пароля */}
-          <div style={{ marginBottom: '28px', position: 'relative' }}>
-            <span style={{
-              position: 'absolute',
-              left: '14px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              <Lock size={18} />
-            </span>
-            <input 
-              type={showPassword ? 'text' : 'password'} 
-              placeholder="Пароль"
-              className="input-glass"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              style={{ paddingLeft: '44px', paddingRight: '44px' }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              style={{
-                position: 'absolute',
-                right: '14px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'none',
-                border: 'none',
-                color: showPassword ? 'var(--neon-cyan)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '4px',
-                transition: 'color 0.2s ease'
-              }}
-              title={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+          <div className="field">
+            <label className="field-label" htmlFor="password">Пароль</label>
+            <div className="field-with-icon">
+              <Lock size={18} aria-hidden="true" />
+              <input id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={isLogin ? 'current-password' : 'new-password'} placeholder="Введите пароль" className="field-control" value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} />
+              <button type="button" className="field-with-icon__action" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}>
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </div>
           </div>
 
-          {/* Кнопка отправки */}
-          <button 
-            type="submit"
-            className={`btn-neon ${isLogin ? 'btn-cyan' : 'btn-violet'}`}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '14px',
-              fontSize: '1rem',
-              fontWeight: '600'
-            }}
-          >
-            {loading ? 'Загрузка...' : isLogin ? 'Войти в аккаунт' : 'Создать аккаунт'}
-          </button>
+          <Button type="submit" variant="primary" size="lg" disabled={loading} className="auth-submit">
+            {loading ? 'Проверяем…' : isLogin ? 'Войти и продолжить' : 'Создать аккаунт'}
+          </Button>
         </form>
 
-        <div style={{ 
-          marginTop: '24px', 
-          textAlign: 'center', 
-          fontSize: '0.8rem', 
-          color: 'var(--text-secondary)',
-          lineHeight: '1.4'
-        }}>
-          {!isLogin ? 
-            'При регистрации будут созданы стартовые демонстрационные модули со словами для тестирования приложения.' : 
-            'Введите логин и пароль для входа и продолжения обучения на любом устройстве.'}
-        </div>
-      </div>
-    </div>
+        <p className="auth-card__hint">
+          {isLogin ? 'Ваш прогресс синхронизируется между устройствами.' : 'После регистрации появятся стартовые модули для знакомства с приложением.'}
+        </p>
+      </Panel>
+    </main>
   );
 }

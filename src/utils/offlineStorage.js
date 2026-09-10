@@ -24,7 +24,7 @@ export function getCachedModulesLocally() {
   try {
     const data = localStorage.getItem(CACHE_KEYS.MODULES);
     return data ? JSON.parse(data) : [];
-  } catch (e) {
+  } catch {
     return [];
   }
 }
@@ -46,7 +46,7 @@ export function getCachedCardsLocally(moduleId) {
     if (!moduleId) return [];
     const data = localStorage.getItem(`${CACHE_KEYS.CARDS_PREFIX}${moduleId}`);
     return data ? JSON.parse(data) : [];
-  } catch (e) {
+  } catch {
     return [];
   }
 }
@@ -89,7 +89,7 @@ export function getOfflineQueueCount() {
     const queueData = localStorage.getItem(CACHE_KEYS.QUEUE);
     const queue = queueData ? JSON.parse(queueData) : [];
     return queue.length;
-  } catch (e) {
+  } catch {
     return 0;
   }
 }

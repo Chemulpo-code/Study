@@ -2,7 +2,7 @@
 const CACHE_NAME = 'chinese-study-v4';
 
 // Установка воркера и немедленная активация
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
