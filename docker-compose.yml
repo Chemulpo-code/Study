@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: chinese-study-app
     labels:
-      - "version=1.9.0"
+      - "version=1.9.7"
       - "app=chinese-study"
     restart: always
     ports:
