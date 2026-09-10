@@ -201,6 +201,17 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     }
   };
 
+  const handleToggleFavorite = async (cardId) => {
+    try {
+      const response = await fetch(`${API_BASE}/api/cards/${cardId}/favorite`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Не удалось обновить избранное.');
+      setCards(items => items.map(card => card.id === cardId ? { ...card, favorite: data.favorite } : card));
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   // Фильтрация карточек по поисковому запросу
   const safeCards = Array.isArray(cards) ? cards : [];
   const filteredCards = safeCards.filter(card => 
@@ -301,6 +312,9 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
 
               {/* Правый блок: Кнопки действий */}
               <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={() => handleToggleFavorite(card.id)} className="btn-neon btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} aria-label={card.favorite ? `Убрать ${card.characters} из избранного` : `Добавить ${card.characters} в избранное`}>
+                  {card.favorite ? '★' : '☆'}
+                </button>
                 <button 
                   onClick={() => handleOpenEditForm(card)}
                   className="btn-neon btn-secondary"

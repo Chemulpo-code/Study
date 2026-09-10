@@ -9,13 +9,70 @@ import { execFile } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import webpush from 'web-push';
+import { ACHIEVEMENTS, getDateKey, getPlanSummary, getTimeKey } from './progressFeatures.js';
+import { travelPacks } from './travelPacks.js';
 
 const app = express();
 const PORT = process.env.PORT || 5005;
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key_chinese_cards_98765';
+const vapidReady = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT);
+
+if (vapidReady) {
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+}
 
 app.use(cors());
 app.use(express.json());
+
+function getUserFeatureSummary(user) {
+  const timezone = user.notificationSettings?.timezone || 'UTC';
+  const dateKey = getDateKey(timezone);
+  const plan = getPlanSummary(db.getDailyPlan(user.id, dateKey));
+  const progress = db.getUserStats(user.id);
+  const learnedCards = db.getModules(user.id)
+    .flatMap(module => db.getProgress(user.id, module.id))
+    .filter(item => item.status === 'know').length;
+  return { dateKey, plan, learnedCards, progress };
+}
+
+function syncAchievements(user, summary, travelComplete = false) {
+  const unlocked = new Set(user.achievements.map(item => item.id));
+  const candidates = [
+    summary.plan.cardsAnswered > 0 && 'first-card',
+    user.streak >= 7 && 'streak-7',
+    summary.learnedCards >= 100 && 'learned-100',
+    summary.plan.complete && 'daily-plan',
+    (travelComplete || user.travelCompleted.length > 0) && 'travel-ready'
+  ].filter(Boolean).filter(id => !unlocked.has(id));
+  return db.unlockAchievements(user.id, candidates);
+}
+
+async function sendDueReminders() {
+  if (!vapidReady) return;
+  for (const user of db.getUsers()) {
+    const settings = user.notificationSettings;
+    if (!settings?.enabled || !settings.time || getTimeKey(settings.timezone) !== settings.time) continue;
+    const summary = getUserFeatureSummary(user);
+    const rawPlan = db.getDailyPlan(user.id, summary.dateKey);
+    if (summary.plan.complete || rawPlan.reminderSent || !user.pushSubscriptions.length) continue;
+
+    const payload = JSON.stringify({ title: 'Китайский на сегодня', body: `Осталось: ${summary.plan.cardsRemaining} карточек и ${summary.plan.trainerCompleted ? 'ничего' : 'один тренажёр'}.`, url: '/' });
+    const active = [];
+    for (const subscription of user.pushSubscriptions) {
+      try {
+        await webpush.sendNotification(subscription, payload);
+        active.push(subscription);
+      } catch (error) {
+        if (error.statusCode !== 404 && error.statusCode !== 410) active.push(subscription);
+      }
+    }
+    user.pushSubscriptions = active;
+    db.markReminderSent(user.id, summary.dateKey);
+  }
+}
+
+setInterval(() => { sendDueReminders().catch(error => console.error('Ошибка push-напоминаний:', error)); }, 60_000).unref();
 
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
@@ -270,6 +327,7 @@ app.get('/api/modules/:moduleId/cards', authenticateToken, (req, res) => {
 
   const cards = db.getCardsByModule(req.params.moduleId);
   const progress = db.getProgress(req.user.id, req.params.moduleId);
+  const user = db.getUserById(req.user.id);
 
   // Обогащаем карточки текущим статусом изучения для этого пользователя
   const cardsWithProgress = cards.map(c => {
@@ -278,7 +336,8 @@ app.get('/api/modules/:moduleId/cards', authenticateToken, (req, res) => {
       ...c,
       status: prog ? prog.status : 'new', // 'new' | 'know' | 'dont_know'
       box: prog ? (prog.box || 1) : 0,
-      nextReviewAt: prog ? prog.nextReviewAt : null
+      nextReviewAt: prog ? prog.nextReviewAt : null,
+      favorite: user.favorites.includes(c.id)
     };
   });
 
@@ -531,9 +590,18 @@ app.post('/api/progress/sm2', authenticateToken, (req, res) => {
   if (!card) {
     return res.status(404).json({ error: 'Карточка не найдена.' });
   }
+  const module = db.getModuleById(card.moduleId);
+  if (!module || module.userId !== req.user.id) {
+    return res.status(403).json({ error: 'Нет доступа к этой карточке.' });
+  }
 
   const progress = db.saveSm2Progress(req.user.id, cardId, Number(rating));
-  res.json(progress);
+  const user = db.getUserById(req.user.id);
+  const summary = getUserFeatureSummary(user);
+  db.recordDailyCardAnswer(user.id, summary.dateKey);
+  const updatedSummary = getUserFeatureSummary(user);
+  const achievements = syncAchievements(user, updatedSummary);
+  res.json({ ...progress, dailyPlan: updatedSummary.plan, achievements });
 });
 
 // Логирование ошибки по карточке из викторин / спринта
@@ -623,7 +691,12 @@ app.post('/api/progress', authenticateToken, (req, res) => {
   }
 
   const progress = db.saveProgress(req.user.id, cardId, status);
-  res.json(progress);
+  const user = db.getUserById(req.user.id);
+  const summary = getUserFeatureSummary(user);
+  db.recordDailyCardAnswer(user.id, summary.dateKey);
+  const updatedSummary = getUserFeatureSummary(user);
+  const achievements = syncAchievements(user, updatedSummary);
+  res.json({ ...progress, dailyPlan: updatedSummary.plan, achievements });
 });
 
 // Пакетная синхронизация прогресса из офлайн-очереди
@@ -643,10 +716,95 @@ app.post('/api/progress/batch', authenticateToken, (req, res) => {
     if (!module || module.userId !== req.user.id) continue;
 
     db.saveProgress(req.user.id, item.cardId, item.status);
+    const user = db.getUserById(req.user.id);
+    db.recordDailyCardAnswer(user.id, getUserFeatureSummary(user).dateKey);
     syncedCount++;
   }
 
-  res.json({ message: `Успешно синхронизировано ${syncedCount} карточек.`, syncedCount });
+  const user = db.getUserById(req.user.id);
+  const summary = getUserFeatureSummary(user);
+  const achievements = syncAchievements(user, summary);
+  res.json({ message: `Успешно синхронизировано ${syncedCount} карточек.`, syncedCount, dailyPlan: summary.plan, achievements });
+});
+
+// --- Прогресс, поиск и избранное ---
+app.get('/api/my-progress', authenticateToken, (req, res) => {
+  const user = db.getUserById(req.user.id);
+  const summary = getUserFeatureSummary(user);
+  const achievements = syncAchievements(user, summary);
+  res.json({ ...summary, favoritesCount: user.favorites.length, achievements: user.achievements, newAchievements: achievements, catalog: ACHIEVEMENTS, notificationSettings: user.notificationSettings, pushConfigured: vapidReady });
+});
+
+app.post('/api/daily-plan/trainer-complete', authenticateToken, (req, res) => {
+  const user = db.getUserById(req.user.id);
+  const summary = getUserFeatureSummary(user);
+  db.completeDailyTrainer(user.id, summary.dateKey);
+  const updatedSummary = getUserFeatureSummary(user);
+  const achievements = syncAchievements(user, updatedSummary);
+  res.json({ plan: updatedSummary.plan, achievements });
+});
+
+app.get('/api/cards/search', authenticateToken, (req, res) => {
+  const query = String(req.query.q || '').trim().toLowerCase();
+  const moduleId = String(req.query.moduleId || '');
+  const status = String(req.query.status || '');
+  const favoritesOnly = req.query.favorite === 'true';
+  const user = db.getUserById(req.user.id);
+  const moduleIds = new Set(db.getModules(user.id).map(module => module.id));
+  const results = [...moduleIds].flatMap((id) => {
+    const module = db.getModuleById(id);
+    return db.getCardsByModule(id).map((card) => {
+      const progress = db.getProgress(user.id, id).find(item => item.cardId === card.id);
+      return { ...card, moduleTitle: module.title, status: progress?.status || 'new', favorite: user.favorites.includes(card.id) };
+    });
+  }).filter((card) => {
+    const text = `${card.characters} ${card.pinyin} ${card.translation}`.toLowerCase();
+    return (!query || text.includes(query)) && (!moduleId || card.moduleId === moduleId) && (!status || card.status === status) && (!favoritesOnly || card.favorite);
+  }).slice(0, 100);
+  res.json({ results });
+});
+
+app.post('/api/cards/:id/favorite', authenticateToken, (req, res) => {
+  const card = db.getCardById(req.params.id);
+  const module = card && db.getModuleById(card.moduleId);
+  if (!card || !module || module.userId !== req.user.id) return res.status(404).json({ error: 'Карточка не найдена.' });
+  res.json({ favorite: db.toggleFavorite(req.user.id, card.id) });
+});
+
+app.get('/api/travel-packs', authenticateToken, (req, res) => {
+  const user = db.getUserById(req.user.id);
+  res.json(travelPacks.map(pack => ({ ...pack, completed: user.travelCompleted.includes(pack.id) })));
+});
+
+app.post('/api/travel-packs/:id/complete', authenticateToken, (req, res) => {
+  const pack = travelPacks.find(item => item.id === req.params.id);
+  if (!pack) return res.status(404).json({ error: 'Сценарий не найден.' });
+  const user = db.getUserById(req.user.id);
+  db.completeTravelPack(user.id, pack.id);
+  const summary = getUserFeatureSummary(user);
+  db.completeDailyTrainer(user.id, summary.dateKey);
+  const achievements = syncAchievements(user, getUserFeatureSummary(user), true);
+  res.json({ completed: user.travelCompleted, achievements });
+});
+
+app.get('/api/push/config', authenticateToken, (req, res) => {
+  res.json({ configured: vapidReady, publicKey: vapidReady ? process.env.VAPID_PUBLIC_KEY : null });
+});
+
+app.put('/api/push/settings', authenticateToken, (req, res) => {
+  const { enabled, time, timezone } = req.body || {};
+  if (time !== undefined && !/^\d{2}:\d{2}$/.test(time)) return res.status(400).json({ error: 'Время должно быть в формате ЧЧ:ММ.' });
+  try { if (timezone) Intl.DateTimeFormat(undefined, { timeZone: timezone }); } catch { return res.status(400).json({ error: 'Некорректный часовой пояс.' }); }
+  const settings = db.setNotificationSettings(req.user.id, { ...(enabled !== undefined && { enabled: Boolean(enabled) }), ...(time && { time }), ...(timezone && { timezone }) });
+  res.json({ settings, configured: vapidReady });
+});
+
+app.post('/api/push/subscribe', authenticateToken, (req, res) => {
+  const subscription = req.body?.subscription;
+  if (!vapidReady) return res.status(503).json({ error: 'Push-уведомления ещё не настроены на сервере.' });
+  if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) return res.status(400).json({ error: 'Некорректная push-подписка.' });
+  db.savePushSubscription(req.user.id, subscription);
+  res.status(201).json({ message: 'Устройство подключено к напоминаниям.' });
 });
 
 

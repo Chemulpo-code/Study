@@ -68,3 +68,7 @@ npm run dev
 4. Нажмите **Deploy the stack**.
 
 Контейнер автоматически соберет React-приложение, запустит Node.js сервер с Python и сохранит ваши данные в Docker Volumes `chinese_data` и `chinese_tts_cache`.
+
+### Push-напоминания
+
+Чтобы включить push, один раз сгенерируйте ключи локально: `npx web-push generate-vapid-keys`. В Environment variables стека Portainer добавьте `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` и `VAPID_SUBJECT` (например, `mailto:you@example.com`), затем сделайте redeploy. Ключи не добавляйте в Git.

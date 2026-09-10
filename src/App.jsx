@@ -15,6 +15,8 @@ const SentenceBuilderPage = lazy(() => import('./pages/SentenceBuilderPage'));
 const FillInBlankPage = lazy(() => import('./pages/FillInBlankPage'));
 const HandsFreeAudioPage = lazy(() => import('./pages/HandsFreeAudioPage'));
 const ContextDialoguesPage = lazy(() => import('./pages/ContextDialoguesPage'));
+const MyProgressPage = lazy(() => import('./pages/MyProgressPage'));
+const TravelPage = lazy(() => import('./pages/TravelPage'));
 
 function PageLoader({ label = 'Открываем учебный кабинет…' }) {
   return <div className="page-loader" role="status"><span className="loader" /><span>{label}</span></div>;
@@ -212,6 +214,14 @@ export default function App() {
     return withSuspense(<ContextDialoguesPage token={token} modules={modulesList} onBack={handleBackToDashboard} />);
   }
 
+  if (currentPage === 'my-progress') {
+    return withSuspense(<MyProgressPage token={token} modules={modulesList} onBack={handleBackToDashboard} onManageModule={handleSelectModuleManage} onOpenTravel={() => changePage('travel')} />);
+  }
+
+  if (currentPage === 'travel') {
+    return withSuspense(<TravelPage token={token} onBack={handleBackToDashboard} />);
+  }
+
   return withSuspense(
     <DashboardPage 
       user={user} 
@@ -230,6 +240,8 @@ export default function App() {
       onOpenFillBlank={() => changePage('fill-blank')}
       onSelectHandsFree={() => changePage('hands-free')}
       onSelectDialogues={() => changePage('dialogues')}
+      onOpenProgress={() => changePage('my-progress')}
+      onOpenTravel={() => changePage('travel')}
     />
   );
 }

@@ -18,7 +18,8 @@
     "jsonwebtoken": "^9.0.2",
     "pinyin-pro": "^3.28.2",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",

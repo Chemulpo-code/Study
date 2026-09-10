@@ -1,5 +1,5 @@
 // High-performance PWA Service Worker with Network-First strategy to guarantee instant code updates
-const CACHE_NAME = 'chinese-study-v4';
+const CACHE_NAME = 'chinese-study-v5';
 
 // Установка воркера и немедленная активация
 self.addEventListener('install', () => {
@@ -43,4 +43,19 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request);
       })
   );
+});
+
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() || {};
+  event.waitUntil(self.registration.showNotification(data.title || 'Китайский на сегодня', {
+    body: data.body || 'Откройте приложение и продолжите занятие.',
+    icon: '/apple-touch-icon.png',
+    badge: '/apple-touch-icon.png',
+    data: { url: data.url || '/' }
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data?.url || '/'));
 });

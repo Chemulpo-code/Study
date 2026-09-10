@@ -5,7 +5,7 @@ import { useToast } from '../components/ToastContext';
 import { cacheModulesLocally, getCachedModulesLocally } from '../utils/offlineStorage';
 import AppShell from '../components/AppShell';
 import Modal from '../components/Modal';
-import { Button, EmptyState } from '../components/UI';
+import { Button, EmptyState, Panel, ProgressBar } from '../components/UI';
 import { ModuleCard, StatsStrip, TodayPanel, TrainerGrid } from '../components/DashboardSections';
 import { selectContinueModule } from '../utils/dashboard';
 
@@ -25,13 +25,16 @@ export default function DashboardPage({
   onOpenSentenceBuilder,
   onOpenFillBlank,
   onSelectHandsFree,
-  onSelectDialogues
+  onSelectDialogues,
+  onOpenProgress,
+  onOpenTravel
 }) {
   const { showToast } = useToast();
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [serverInfo, setServerInfo] = useState(null);
+  const [dailyPlan, setDailyPlan] = useState(null);
   const [selectedModuleId, setSelectedModuleId] = useState(null);
   const [isModeModalOpen, setIsModeModalOpen] = useState(false);
   const [isModuleModalOpen, setIsModuleModalOpen] = useState(false);
@@ -77,7 +80,11 @@ export default function DashboardPage({
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then(setServerInfo)
       .catch(() => setServerInfo({ version: 'офлайн' }));
-  }, [fetchModules]);
+    fetch(`${API_BASE}/api/my-progress`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(response => response.ok ? response.json() : Promise.reject())
+      .then(data => setDailyPlan(data.plan))
+      .catch(() => setDailyPlan(null));
+  }, [fetchModules, token]);
 
   const openCreateModal = () => {
     setEditingModuleId(null);
@@ -187,6 +194,7 @@ export default function DashboardPage({
         <a className="skip-link" href="#main-content">Перейти к содержанию</a>
         <div className="brand-lockup"><span className="seal" aria-hidden="true">学</span><div><strong>Учебный кабинет</strong><small>你好, {user.username}</small></div></div>
         <div className="dashboard-topbar__actions">
+          <Button variant="ghost" size="sm" onClick={onOpenProgress}>Мой прогресс</Button>
           <Button variant="secondary" size="sm" onClick={() => onToggleDisplayMode(displayMode === 'hanzi' ? 'pinyin' : 'hanzi')}>{displayMode === 'pinyin' ? 'Пиньинь' : 'Иероглифы'}</Button>
           <Button variant="ghost" size="sm" onClick={onLogout} aria-label="Выйти из аккаунта"><LogOut size={17} aria-hidden="true" /><span>Выйти</span></Button>
         </div>
@@ -194,6 +202,11 @@ export default function DashboardPage({
 
       <div id="main-dashboard">
         <TodayPanel module={continueModule} onContinue={openStudyMode} onCreate={openCreateModal} />
+        {dailyPlan && <Panel className="dashboard-daily-plan">
+          <div><span className="eyebrow">Сегодня · ежедневный план</span><strong>{dailyPlan.complete ? 'План выполнен' : `Осталось ${dailyPlan.cardsRemaining} карточек и ${dailyPlan.trainerCompleted ? 'всё готово' : 'один тренажёр'}`}</strong></div>
+          <ProgressBar value={(dailyPlan.cardsAnswered / 10) * 70 + (dailyPlan.trainerCompleted ? 30 : 0)} label={`${dailyPlan.cardsAnswered}/10 карточек`} />
+          <Button variant="secondary" size="sm" onClick={onOpenProgress}>Открыть прогресс</Button>
+        </Panel>}
         <StatsStrip progress={overallProgress} modules={regularModules.length} cards={totalCards} streak={user.streak} />
 
         <section id="modules" className="dashboard-section">
@@ -207,6 +220,11 @@ export default function DashboardPage({
         <section id="trainers" className="dashboard-section">
           <div className="section-heading"><div><span className="eyebrow">Практика навыков</span><h2>Тренажёры</h2></div></div>
           <TrainerGrid trainers={trainers} />
+        </section>
+
+        <section className="dashboard-section dashboard-quick-links" aria-label="Дополнительные возможности">
+          <Button variant="secondary" onClick={onOpenProgress}>⌕ Поиск и избранное</Button>
+          <Button variant="secondary" onClick={onOpenTravel}>行 Перед поездкой</Button>
         </section>
 
         <footer className="app-footer"><span>Клиент v{APP_VERSION}</span><span className={serverInfo?.buildHash ? 'status-ok' : ''}>{serverInfo?.buildHash ? `Сервер v${serverInfo.version}` : 'Сервер офлайн'}</span><Button variant="ghost" size="sm" onClick={resetAllProgress}><RefreshCw size={15} aria-hidden="true" />Сбросить весь прогресс</Button></footer>

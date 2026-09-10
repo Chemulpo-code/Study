@@ -20,6 +20,19 @@ let dataCache = {
   progress: []
 };
 
+function ensureUserFeatures(user) {
+  if (!user) return null;
+  user.dailyPlans ||= {};
+  user.favorites ||= [];
+  user.achievements ||= [];
+  user.travelCompleted ||= [];
+  user.pushSubscriptions ||= [];
+  user.notificationSettings ||= { enabled: false, time: '20:00', timezone: 'UTC' };
+  user.notificationSettings.time ||= '20:00';
+  user.notificationSettings.timezone ||= 'UTC';
+  return user;
+}
+
 // Загрузка базы данных при запуске
 function initDb() {
   try {
@@ -67,7 +80,13 @@ const db = {
       username,
       passwordHash,
       streak: 0,
-      lastActiveDate: ''
+      lastActiveDate: '',
+      dailyPlans: {},
+      favorites: [],
+      achievements: [],
+      travelCompleted: [],
+      pushSubscriptions: [],
+      notificationSettings: { enabled: false, time: '20:00', timezone: 'UTC' }
     };
     dataCache.users.push(user);
     saveDb();
@@ -75,11 +94,103 @@ const db = {
   },
 
   getUserByUsername(username) {
-    return dataCache.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    return ensureUserFeatures(dataCache.users.find(u => u.username.toLowerCase() === username.toLowerCase()));
   },
 
   getUserById(id) {
-    return dataCache.users.find(u => u.id === id);
+    return ensureUserFeatures(dataCache.users.find(u => u.id === id));
+  },
+
+  getUsers() {
+    return dataCache.users.map(ensureUserFeatures);
+  },
+
+  getDailyPlan(userId, dateKey) {
+    const user = this.getUserById(userId);
+    if (!user) return null;
+    user.dailyPlans[dateKey] ||= { cardsAnswered: 0, trainerCompleted: false, reminderSent: false };
+    return user.dailyPlans[dateKey];
+  },
+
+  recordDailyCardAnswer(userId, dateKey) {
+    const plan = this.getDailyPlan(userId, dateKey);
+    if (!plan) return null;
+    plan.cardsAnswered = Math.min(10, (plan.cardsAnswered || 0) + 1);
+    saveDb();
+    return plan;
+  },
+
+  completeDailyTrainer(userId, dateKey) {
+    const plan = this.getDailyPlan(userId, dateKey);
+    if (!plan) return null;
+    plan.trainerCompleted = true;
+    saveDb();
+    return plan;
+  },
+
+  markReminderSent(userId, dateKey) {
+    const plan = this.getDailyPlan(userId, dateKey);
+    if (!plan) return null;
+    plan.reminderSent = true;
+    saveDb();
+    return plan;
+  },
+
+  toggleFavorite(userId, cardId) {
+    const user = this.getUserById(userId);
+    if (!user) return null;
+    const favorites = new Set(user.favorites);
+    if (favorites.has(cardId)) favorites.delete(cardId);
+    else favorites.add(cardId);
+    user.favorites = [...favorites];
+    saveDb();
+    return user.favorites.includes(cardId);
+  },
+
+  setNotificationSettings(userId, settings) {
+    const user = this.getUserById(userId);
+    if (!user) return null;
+    user.notificationSettings = { ...user.notificationSettings, ...settings };
+    saveDb();
+    return user.notificationSettings;
+  },
+
+  savePushSubscription(userId, subscription) {
+    const user = this.getUserById(userId);
+    if (!user) return null;
+    user.pushSubscriptions = user.pushSubscriptions.filter(item => item.endpoint !== subscription.endpoint);
+    user.pushSubscriptions.push(subscription);
+    saveDb();
+    return user.pushSubscriptions;
+  },
+
+  removePushSubscription(userId, endpoint) {
+    const user = this.getUserById(userId);
+    if (!user) return;
+    user.pushSubscriptions = user.pushSubscriptions.filter(item => item.endpoint !== endpoint);
+    saveDb();
+  },
+
+  unlockAchievements(userId, ids) {
+    const user = this.getUserById(userId);
+    if (!user) return [];
+    const known = new Set(user.achievements.map(item => item.id));
+    const created = ids.filter(id => !known.has(id)).map(id => ({ id, unlockedAt: new Date().toISOString() }));
+    if (created.length) {
+      user.achievements.push(...created);
+      saveDb();
+    }
+    return created;
+  },
+
+  completeTravelPack(userId, packId) {
+    const user = this.getUserById(userId);
+    if (!user) return [];
+    if (!user.travelCompleted.includes(packId)) {
+      user.travelCompleted.push(packId);
+      saveDb();
+    }
+    return user.travelCompleted;
   },
 
   checkAndUpdateStreak(userId) {
