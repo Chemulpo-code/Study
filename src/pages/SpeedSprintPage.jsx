@@ -292,9 +292,8 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
               {modulesList.map(mod => {
                 const isSelected = selectedModuleIds.includes(mod.id);
                 return (
-                  <div
+                  <label
                     key={mod.id}
-                    onClick={() => handleToggleModule(mod.id)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -310,7 +309,7 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => {}}
+                      onChange={() => handleToggleModule(mod.id)}
                       style={{ cursor: 'pointer', accentColor: 'var(--neon-cyan)' }}
                     />
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
@@ -321,7 +320,7 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
                         {mod.count} слов
                       </div>
                     </div>
-                  </div>
+                  </label>
                 );
               })}
             </div>

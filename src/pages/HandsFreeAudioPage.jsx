@@ -3,6 +3,13 @@ import { Play, Pause, SkipForward, SkipBack } from '../components/Icons';
 import { API_BASE } from '../config';
 import { PageHeader } from '../components/UI';
 
+const stopActiveAudio = () => {
+  if (window.activeAudio) {
+    try { window.activeAudio.pause(); } catch {}
+  }
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+};
+
 export default function HandsFreeAudioPage({ token, modules, onBack }) {
   const [selectedModuleId, setSelectedModuleId] = useState('all');
   const [cards, setCards] = useState([]);
@@ -168,16 +175,11 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
     const runId = ++playbackRunRef.current;
+    clearTimeout(timerRef.current);
+    stopActiveAudio();
     if (isPlaying) {
       playCardSequence(currentIndexRef.current, runId);
     } else {
-      clearTimeout(timerRef.current);
-      if (window.activeAudio) {
-        try { window.activeAudio.pause(); } catch {}
-      }
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
       setCurrentStep('idle');
     }
   }, [isPlaying, playCardSequence]);
@@ -192,7 +194,7 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
 
   const handleNext = () => {
     clearTimeout(timerRef.current);
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    stopActiveAudio();
     const nextIdx = (currentIndex + 1) % cards.length;
     currentIndexRef.current = nextIdx;
     setCurrentIndex(nextIdx);
@@ -201,7 +203,7 @@ export default function HandsFreeAudioPage({ token, modules, onBack }) {
 
   const handlePrev = () => {
     clearTimeout(timerRef.current);
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    stopActiveAudio();
     const prevIdx = (currentIndex - 1 + cards.length) % cards.length;
     currentIndexRef.current = prevIdx;
     setCurrentIndex(prevIdx);

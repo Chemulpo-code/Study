@@ -31,12 +31,12 @@ test('flashcard flips with Enter and keeps its accessible button behavior', asyn
     </ToastProvider>
   );
 
-  const flashcard = await screen.findByRole('button', { name: 'Показать перевод' });
+  const flashcard = await screen.findByRole('button', { name: 'Нажмите для перевода' });
   flashcard.focus();
   await user.keyboard('{Enter}');
 
   await waitFor(() => expect(screen.getByText('учиться')).toBeVisible());
-  expect(flashcard).toHaveAttribute('aria-label', 'Скрыть ответ');
+  expect(screen.getByRole('button', { name: 'Кликните, чтобы скрыть ответ' })).toBeVisible();
 });
 
 test('keyboard use of the nested audio control does not flip the flashcard', async () => {
@@ -51,9 +51,10 @@ test('keyboard use of the nested audio control does not flip the flashcard', asy
     </ToastProvider>
   );
 
-  const flashcard = await screen.findByRole('button', { name: 'Показать перевод' });
+  const flashcard = await screen.findByRole('button', { name: 'Нажмите для перевода' });
   const audioButton = screen.getByRole('button', { name: 'Нажмите для воспроизведения на обычной скорости' });
   fireEvent.keyDown(audioButton, { key: 'Enter' });
 
-  expect(flashcard).toHaveAttribute('aria-label', 'Показать перевод');
+  expect(flashcard).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Кликните, чтобы скрыть ответ' })).not.toBeInTheDocument();
 });

@@ -5,12 +5,15 @@ import Modal from './Modal';
 
 function Fixture() {
   const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
   const triggerRef = useRef(null);
 
   return (
     <>
       <button ref={triggerRef} onClick={() => setOpen(true)}>Открыть</button>
       <Modal open={open} title="Новый модуль" onClose={() => setOpen(false)} returnFocusRef={triggerRef}>
+        <label htmlFor="fixture-title">Название</label>
+        <input id="fixture-title" value={title} onChange={(event) => setTitle(event.target.value)} />
         <button>Сохранить</button>
       </Modal>
     </>
@@ -40,4 +43,17 @@ test('Modal keeps tab focus inside the dialog', async () => {
   await user.tab();
 
   expect(close).toHaveFocus();
+});
+
+test('Modal keeps focus while typing into a controlled field', async () => {
+  const user = userEvent.setup();
+  render(<Fixture />);
+  await user.click(screen.getByRole('button', { name: 'Открыть' }));
+
+  const input = screen.getByRole('textbox', { name: 'Название' });
+  await user.click(input);
+  await user.type(input, 'Путешествие');
+
+  expect(input).toHaveValue('Путешествие');
+  expect(input).toHaveFocus();
 });
