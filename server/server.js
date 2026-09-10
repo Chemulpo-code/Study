@@ -77,8 +77,8 @@ setInterval(() => { sendDueReminders().catch(error => console.error('Ошибк�
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.9.7',
-    buildHash: 'v1.9.7-landing-color-palette-alignment',
+    version: '1.9.8',
+    buildHash: 'v1.9.8-dockerfile-node-modules-fix',
     serverTime: new Date().toISOString()
   });
 });
