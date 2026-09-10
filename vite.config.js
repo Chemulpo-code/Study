@@ -18,7 +18,7 @@ export default defineConfig({
     globals: true
   },
   define: {
-    __APP_VERSION__: JSON.stringify('1.9.6'),
+    __APP_VERSION__: JSON.stringify('1.9.7'),
     __BUILD_TIME__: JSON.stringify(buildTimestamp)
   }
 });
