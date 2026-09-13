@@ -77,8 +77,8 @@ setInterval(() => { sendDueReminders().catch(error => console.error('Ошибк�
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '1.9.8',
-    buildHash: 'v1.9.8-dockerfile-node-modules-fix',
+    version: '1.9.9',
+    buildHash: 'v1.9.9-pwa-zoom-lock',
     serverTime: new Date().toISOString()
   });
 });
