@@ -1,5 +1,5 @@
 // High-performance PWA Service Worker with Network-First strategy to guarantee instant code updates
-const CACHE_NAME = 'chinese-study-v5';
+const CACHE_NAME = 'chinese-study-v6';
 
 // Установка воркера и немедленная активация
 self.addEventListener('install', () => {

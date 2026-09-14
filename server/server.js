@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import webpush from 'web-push';
 import { ACHIEVEMENTS, getDateKey, getPlanSummary, getTimeKey } from './progressFeatures.js';
 import { travelPacks } from './travelPacks.js';
+import { getStaticCachePolicy } from './staticCache.js';
 
 const app = express();
 const PORT = process.env.PORT || 5005;
@@ -888,12 +889,21 @@ if (fs.existsSync(distPath)) {
   // Кэшируем собранные Vite JS/CSS файлы на 1 год (они с хэшем)
   app.use('/assets', express.static(path.join(distPath, 'assets'), {
     maxAge: '1y',
-    immutable: true
+    immutable: true,
+    setHeaders(res, filePath) {
+      res.setHeader('Cache-Control', getStaticCachePolicy(filePath));
+    }
   }));
-  app.use(express.static(distPath, { maxAge: '1d' }));
+  app.use(express.static(distPath, {
+    maxAge: '1d',
+    setHeaders(res, filePath) {
+      res.setHeader('Cache-Control', getStaticCachePolicy(filePath));
+    }
+  }));
 
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) return next();
+    res.setHeader('Cache-Control', getStaticCachePolicy('/index.html'));
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
