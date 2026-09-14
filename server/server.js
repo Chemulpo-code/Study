@@ -78,8 +78,8 @@ setInterval(() => { sendDueReminders().catch(error => console.error('Ошибк�
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '2.0.4',
-    buildHash: 'v2.0.4-sticky-module-search',
+    version: '2.0.5',
+    buildHash: 'v2.0.5-ios-sticky-controls-fix',
     serverTime: new Date().toISOString()
   });
 });

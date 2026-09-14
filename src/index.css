@@ -596,7 +596,6 @@ p { text-wrap: pretty; }
 .swipe-back-wrapper {
   position: relative;
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
 .swipe-back-content {
