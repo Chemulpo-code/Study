@@ -230,7 +230,19 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
 
   return (
     <div className="page-container manage-page">
-      <PageHeader title={module?.title || 'Слова модуля'} eyebrow="Библиотека" meta={`${cards.length} карточек`} onBack={handleBack} />
+      <div className="manage-sticky-controls">
+        <PageHeader title={module?.title || 'Слова модуля'} eyebrow="Библиотека" meta={`${cards.length} карточек`} onBack={handleBack} />
+        <div className="manage-page__search">
+          <input
+            type="text"
+            placeholder="Поиск по иероглифам, пиньиню или переводу..."
+            aria-label="Поиск карточек"
+            className="input-glass"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
 
       {error && (
         <div style={{
@@ -244,18 +256,6 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
           {error}
         </div>
       )}
-
-      {/* Панель поиска */}
-      <div style={{ marginBottom: '24px' }}>
-        <input 
-          type="text" 
-          placeholder="Поиск по иероглифам, пиньиню или переводу..."
-          aria-label="Поиск карточек"
-          className="input-glass"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
 
       {/* Список слов в виде таблицы */}
       {filteredCards.length === 0 ? (

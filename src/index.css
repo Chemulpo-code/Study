@@ -472,6 +472,9 @@ p { text-wrap: pretty; }
 .medium-page { max-width: 840px; }
 .wide-page { max-width: 1120px; }
 .manage-page { max-width: 940px; }
+.manage-sticky-controls { position: sticky; top: max(16px, env(safe-area-inset-top, 0px)); z-index: 50; margin-bottom: 24px; padding-bottom: 16px; background: linear-gradient(var(--ink) 76%, transparent); }
+.manage-page .page-header { position: static; margin-bottom: 14px; }
+.manage-page__search { padding: 0 2px; }
 .manage-add-card { position: fixed; bottom: 24px; left: 50%; z-index: 80; display: flex; width: auto; max-width: 90vw; align-items: center; justify-content: center; transform: translateX(-50%); }
 .page-loader { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--paper-muted); }
 
@@ -507,6 +510,7 @@ p { text-wrap: pretty; }
   .page-header { top: max(54px, calc(14px + env(safe-area-inset-top, 44px))); margin-bottom: 20px; }
   .page-header__main, .page-header__aside { gap: 8px; }
   .page-header__aside .ui-button span, .page-header__main > .ui-button span { display: none; }
+  .manage-sticky-controls { top: max(14px, env(safe-area-inset-top, 0px)); margin-bottom: 18px; padding-bottom: 12px; }
   .manage-add-card { bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
   .dashboard-header { align-items: stretch; flex-direction: column; padding: 16px; }
   .dashboard-user-info { justify-content: space-between; }
