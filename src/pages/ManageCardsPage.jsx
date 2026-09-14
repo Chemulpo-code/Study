@@ -484,18 +484,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       </Modal>
 
       {/* Прикрепленная внизу экрана по центру кнопка "Добавить слово / фразу" (Sticky FAB) */}
-      <div style={{
-        position: 'fixed',
-        bottom: '24px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 99,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: 'auto',
-        maxWidth: '90vw'
-      }}>
+      <div className="manage-add-card">
         <button 
           onClick={handleOpenCreateForm}
           className="btn-neon btn-cyan"

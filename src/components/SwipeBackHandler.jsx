@@ -124,8 +124,8 @@ export default function SwipeBackHandler({ onBack, children, disabled = false })
       <div
         className="swipe-back-content"
         style={{
-          transform: `translate3d(${contentTranslateX}px, 0, 0)`,
-          transition: isSwiping ? 'none' : 'transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1)',
+          transform: isSwiping ? `translate3d(${contentTranslateX}px, 0, 0)` : undefined,
+          transition: isSwiping ? 'none' : undefined,
           willChange: isSwiping ? 'transform' : 'auto',
         }}
       >

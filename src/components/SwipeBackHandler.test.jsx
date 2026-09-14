@@ -5,12 +5,13 @@ import SwipeBackHandler from './SwipeBackHandler';
 
 describe('SwipeBackHandler', () => {
   it('renders children correctly', () => {
-    const { getByText } = render(
+    const { getByText, container } = render(
       <SwipeBackHandler onBack={() => {}}>
         <div>Page Content</div>
       </SwipeBackHandler>
     );
     expect(getByText('Page Content')).toBeInTheDocument();
+    expect(container.querySelector('.swipe-back-content').style.transform).toBe('');
   });
 
   it('triggers onBack when swiping right from left edge past trigger distance', () => {
