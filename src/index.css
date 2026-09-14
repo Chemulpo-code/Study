@@ -507,7 +507,7 @@ p { text-wrap: pretty; }
   .page-header { top: max(54px, calc(14px + env(safe-area-inset-top, 44px))); margin-bottom: 20px; }
   .page-header__main, .page-header__aside { gap: 8px; }
   .page-header__aside .ui-button span, .page-header__main > .ui-button span { display: none; }
-  .manage-add-card { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .manage-add-card { bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
   .dashboard-header { align-items: stretch; flex-direction: column; padding: 16px; }
   .dashboard-user-info { justify-content: space-between; }
   .dashboard-actions { display: grid; grid-template-columns: 1fr auto; }
