@@ -77,8 +77,8 @@ setInterval(() => { sendDueReminders().catch(error => console.error('Ошибк�
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '2.0.0',
-    buildHash: 'v2.0.0-pwa-notch-swipe',
+    version: '2.0.1',
+    buildHash: 'v2.0.1-pwa-header-swipe-fix',
     serverTime: new Date().toISOString()
   });
 });
