@@ -3,6 +3,7 @@ import { API_BASE } from './config';
 import AuthPage from './pages/AuthPage';
 import { useToast } from './components/ToastContext';
 import { syncOfflineProgressBatch } from './utils/offlineStorage';
+import SwipeBackHandler from './components/SwipeBackHandler';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const StudyPage = lazy(() => import('./pages/StudyPage'));
@@ -148,7 +149,17 @@ export default function App() {
     changePage('dashboard');
   };
 
-  const withSuspense = (content) => <Suspense fallback={<PageLoader />}>{content}</Suspense>;
+  const withSuspense = (content, enableSwipeBack = true) => (
+    <Suspense fallback={<PageLoader />}>
+      {enableSwipeBack ? (
+        <SwipeBackHandler onBack={handleBackToDashboard}>
+          {content}
+        </SwipeBackHandler>
+      ) : (
+        content
+      )}
+    </Suspense>
+  );
 
   if (loading) {
     return <PageLoader label="Проверяем авторизацию…" />;
@@ -242,6 +253,7 @@ export default function App() {
       onSelectDialogues={() => changePage('dialogues')}
       onOpenProgress={() => changePage('my-progress')}
       onOpenTravel={() => changePage('travel')}
-    />
+    />,
+    false
   );
 }

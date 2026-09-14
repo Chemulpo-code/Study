@@ -206,7 +206,7 @@ export default function SpeedSprintPage({ token, displayMode, onBack }) {
 
   if (allCards.length < 4) {
     return (
-      <div style={{ maxWidth: '600px', margin: '40px auto', padding: '0 20px', textAlign: 'center' }}>
+      <div className="page-container" style={{ maxWidth: '600px', textAlign: 'center' }}>
         <button onClick={onBack} className="btn-neon btn-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '10px', marginBottom: '32px' }}>
           <ArrowLeft size={16} /> Назад
         </button>
