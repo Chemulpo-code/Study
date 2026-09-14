@@ -12,8 +12,8 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-LABEL version="1.9.9"
-LABEL description="Chinese Study App v1.9.9"
+LABEL version="2.0.0"
+LABEL description="Chinese Study App v2.0.0"
 
 # Устанавливаем Python 3 и edge-tts для озвучки в Docker
 RUN apk add --no-cache python3 py3-pip && \
