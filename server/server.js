@@ -78,8 +78,8 @@ setInterval(() => { sendDueReminders().catch(error => console.error('Ошибк�
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '2.0.5',
-    buildHash: 'v2.0.5-ios-sticky-controls-fix',
+    version: '2.0.3',
+    buildHash: 'v2.0.3-error-webhook-sm2-fix',
     serverTime: new Date().toISOString()
   });
 });
@@ -907,6 +907,73 @@ if (fs.existsSync(distPath)) {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
+
+const ERROR_WEBHOOK_URL = 'https://n8n.crm-toolkits.ru/webhook/b748381d-60f6-47cc-84e6-d9d39774a2f7';
+
+async function sendServerNotification(errorInfo) {
+  try {
+    const payload = {
+      service: 'chinese-study',
+      source: 'backend',
+      error: errorInfo.error || 'Server error',
+      stack: errorInfo.stack || null,
+      context: {
+        url: errorInfo.url || '',
+        method: errorInfo.method || '',
+        timestamp: new Date().toISOString(),
+        ...(errorInfo.extraContext || {})
+      }
+    };
+    await fetch(ERROR_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error('Ошибка отправки уведомления на вебхук:', err.message);
+  }
+}
+
+// Эндпоинт отправки отчетов об ошибках от фронтенда
+app.post('/api/report-error', (req, res) => {
+  const { error, stack, source, context } = req.body || {};
+  sendServerNotification({
+    error: error || 'Client error report',
+    stack,
+    extraContext: { source: source || 'client', ...(context || {}) }
+  });
+  res.json({ status: 'ok' });
+});
+
+// Глобальный обработчик ошибок Express
+app.use((err, req, res, next) => {
+  console.error('Необработанная ошибка Express:', err);
+  sendServerNotification({
+    error: err.message || 'Express Internal Error',
+    stack: err.stack || null,
+    url: req.originalUrl,
+    method: req.method
+  });
+  res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Критическая неперехваченная ошибка сервера:', err);
+  sendServerNotification({
+    error: err?.message || String(err),
+    stack: err?.stack || null,
+    extraContext: { type: 'uncaughtException' }
+  });
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Необработанный Promise rejection сервера:', reason);
+  sendServerNotification({
+    error: reason?.message || String(reason),
+    stack: reason?.stack || null,
+    extraContext: { type: 'unhandledRejection' }
+  });
+});
 
 // Запуск сервера
 app.listen(PORT, () => {

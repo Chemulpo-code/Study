@@ -252,9 +252,16 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
     const card = cards[currentIndex];
     if (!card) return;
 
+    const isSuccess = rating >= 3;
+    setSessionStats(prev => ({
+      ...prev,
+      know: isSuccess ? prev.know + 1 : prev.know,
+      dontKnow: !isSuccess ? prev.dontKnow + 1 : prev.dontKnow
+    }));
+
     try {
       if (!navigator.onLine) {
-        queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
+        queueOfflineProgress(card.id, isSuccess ? 'know' : 'dont_know', moduleId);
         showToast('Прогресс сохранен офлайн 📶', 'info');
       } else {
         const response = await fetch(`${API_BASE}/api/progress/sm2`, {
@@ -270,11 +277,11 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
         });
 
         if (!response.ok) {
-          queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
+          queueOfflineProgress(card.id, isSuccess ? 'know' : 'dont_know', moduleId);
         }
       }
     } catch {
-      queueOfflineProgress(card.id, rating >= 3 ? 'know' : 'dont_know', moduleId);
+      queueOfflineProgress(card.id, isSuccess ? 'know' : 'dont_know', moduleId);
     }
 
     setIsFlipped(false);
@@ -443,7 +450,19 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
   }
 
   const currentCard = cards[currentIndex];
-  const progressPercent = Math.round(((currentIndex) / cards.length) * 100);
+
+  if (!currentCard && !sessionCompleted) {
+    return (
+      <main className="page-container study-page">
+        <PageHeader title="Практика" eyebrow="Обучение" onBack={handleBack} />
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '220px' }}>
+          <span className="loader" />
+        </div>
+      </main>
+    );
+  }
+
+  const progressPercent = Math.round(((currentIndex) / (cards.length || 1)) * 100);
 
   const modeTitle = currentMode === 'cards' ? (isSpaced ? 'Интервальное повторение' : 'Карточки') : currentMode === 'quiz' ? 'Тест' : 'Диктант';
 
@@ -635,7 +654,8 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                 {isSpaced ? (
                   <>
                     <button 
-                      onClick={() => handleSm2Answer(1)}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleSm2Answer(1); }}
                       className="btn-neon btn-red"
                       style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px' }}
                     >
@@ -644,30 +664,33 @@ export default function StudyPage({ token, moduleId, mode, initialMode, spaced, 
                     </button>
 
                     <button 
-                      onClick={() => handleSm2Answer(2)}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleSm2Answer(2); }}
                       className="btn-neon btn-secondary"
                       style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px', border: '1px solid #ffaa00', color: '#ffaa00' }}
                     >
                       <span>🟡 Трудно</span>
-                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{Math.max(1, Math.round((currentCard.interval || 1) * 1.2))} дн</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{Math.max(1, Math.round(((currentCard?.interval || 1) * 1.2)))} дн</span>
                     </button>
 
                     <button 
-                      onClick={() => handleSm2Answer(3)}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleSm2Answer(3); }}
                       className="btn-neon btn-green"
                       style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px' }}
                     >
                       <span>🟢 Хорошо</span>
-                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{currentCard.interval ? Math.round(currentCard.interval * (currentCard.easeFactor || 2.5)) : 1} дн</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{currentCard?.interval ? Math.round(currentCard.interval * (currentCard.easeFactor || 2.5)) : 1} дн</span>
                     </button>
 
                     <button 
-                      onClick={() => handleSm2Answer(4)}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleSm2Answer(4); }}
                       className="btn-neon btn-cyan"
                       style={{ flex: 1, padding: '10px 8px', fontSize: '0.82rem', fontWeight: '700', flexDirection: 'column', gap: '2px', borderRadius: '12px' }}
                     >
                       <span>🔵 Легко</span>
-                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{currentCard.interval ? Math.round(currentCard.interval * (currentCard.easeFactor || 2.5) * 1.3) : 4} дн</span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>+{currentCard?.interval ? Math.round(currentCard.interval * (currentCard.easeFactor || 2.5) * 1.3) : 4} дн</span>
                     </button>
                   </>
                 ) : (
