@@ -634,3 +634,15 @@ p { text-wrap: pretty; }
   color: #ffffff;
   box-shadow: 0 10px 35px rgba(225, 91, 72, 0.5);
 }
+
+.card-row-interactive {
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-row-interactive:hover {
+  border-color: rgba(0, 242, 254, 0.35) !important;
+  background: rgba(29, 38, 50, 0.98) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.36), 0 0 20px rgba(0, 242, 254, 0.08);
+}
+

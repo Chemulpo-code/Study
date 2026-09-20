@@ -78,8 +78,8 @@ setInterval(() => { sendDueReminders().catch(error => console.error('Ошибк�
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '2.0.3',
-    buildHash: 'v2.0.3-error-webhook-sm2-fix',
+    version: '2.1.0',
+    buildHash: 'v2.1.0-card-preview-modal-audio',
     serverTime: new Date().toISOString()
   });
 });

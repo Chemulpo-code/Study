@@ -4,6 +4,8 @@ import { API_BASE } from '../config';
 import { useToast } from '../components/ToastContext';
 import { PageHeader } from '../components/UI';
 import Modal from '../components/Modal';
+import AudioPlayer from '../components/AudioPlayer';
+import { deconstructCharacter } from '../utils/radicalsData';
 
 import { cacheCardsLocally, getCachedCardsLocally } from '../utils/offlineStorage';
 
@@ -15,6 +17,9 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Просмотр карточки в модальном окне
+  const [viewingCard, setViewingCard] = useState(null);
 
   // Состояния для формы (добавление / редактирование карточки)
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -257,7 +262,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
         </div>
       )}
 
-      {/* Список слов в виде таблицы */}
+      {/* Список слов в виде карточек */}
       {filteredCards.length === 0 ? (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           {searchQuery ? 'Ничего не найдено по вашему запросу.' : 'В этом модуле пока нет слов. Нажмите кнопку «Добавить слово», чтобы создать карточку.'}
@@ -265,22 +270,32 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {filteredCards.map(card => (
-            <div key={card.id} className="glass-panel" style={{
-              padding: '20px 24px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '16px'
-            }}>
-              {/* Левый блок: Иероглифы и пиньинь */}
-              <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1, minWidth: '250px' }}>
+            <div
+              key={card.id}
+              className="glass-panel card-row-interactive"
+              onClick={() => setViewingCard(card)}
+              style={{
+                padding: '20px 24px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '16px',
+                cursor: 'pointer'
+              }}
+            >
+              {/* Левый блок: Иероглифы и пиньинь + Кнопка быстрой озвучки */}
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flex: 1, minWidth: '250px' }}>
                 <div className="chinese-char-sm" style={{ 
                   fontSize: '1.8rem', 
                   color: '#fff', 
-                  minWidth: '90px'
+                  minWidth: '80px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
                 }}>
-                  {card.characters}
+                  <span>{card.characters}</span>
+                  <AudioPlayer text={card.characters} style={{ width: '32px', height: '32px' }} />
                 </div>
                 <div>
                   <div style={{ color: 'var(--neon-cyan)', fontWeight: '600', fontSize: '0.95rem' }}>{card.pinyin}</div>
@@ -288,7 +303,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                 </div>
               </div>
 
-              {/* Средний блок: Примеры (если есть) */}
+              {/* Средний блок: Примеры + Кнопка озвучки примера */}
               <div style={{ flex: 1.5, minWidth: '280px' }}>
                 {card.examples && card.examples.length > 0 ? (
                   <div style={{ 
@@ -298,9 +313,12 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
                     borderRadius: '8px',
                     border: '1px solid rgba(255,255,255,0.04)' 
                   }}>
-                    <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', marginBottom: '2px' }}>
-                      Пример:
-                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', textTransform: 'uppercase' }}>
+                        Пример:
+                      </span>
+                      <AudioPlayer text={card.examples[0].chinese} style={{ width: '26px', height: '26px' }} />
+                    </div>
                     <div style={{ fontFamily: 'Noto Sans SC', color: '#fff' }}>{card.examples[0].chinese}</div>
                     <div style={{ color: 'var(--neon-cyan)', fontSize: '0.75rem' }}>{card.examples[0].pinyin}</div>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{card.examples[0].translation}</div>
@@ -311,19 +329,27 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
               </div>
 
               {/* Правый блок: Кнопки действий */}
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => handleToggleFavorite(card.id)} className="btn-neon btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} aria-label={card.favorite ? `Убрать ${card.characters} из избранного` : `Добавить ${card.characters} в избранное`}>
+              <div style={{ display: 'flex', gap: '12px' }} onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleToggleFavorite(card.id); }}
+                  className="btn-neon btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  aria-label={card.favorite ? `Убрать ${card.characters} из избранного` : `Добавить ${card.characters} в избранное`}
+                >
                   {card.favorite ? '★' : '☆'}
                 </button>
                 <button 
-                  onClick={() => handleOpenEditForm(card)}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleOpenEditForm(card); }}
                   className="btn-neon btn-secondary"
                   style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                 >
                   <Edit size={14} /> Изменить
                 </button>
                 <button 
-                  onClick={() => handleDeleteCard(card.id, card.characters)}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteCard(card.id, card.characters); }}
                   className="btn-neon btn-red"
                   style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                   aria-label={`Удалить карточку ${card.characters}`}
@@ -335,6 +361,165 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
           ))}
         </div>
       )}
+
+      {/* Модальное окно подробного просмотра карточки */}
+      <Modal
+        open={Boolean(viewingCard)}
+        title="Просмотр карточки"
+        onClose={() => setViewingCard(null)}
+        className="card-detail-modal"
+      >
+        {viewingCard && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Главный иероглиф и транскрипция с кнопкой озвучки */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '24px 16px',
+              background: 'rgba(0, 242, 254, 0.03)',
+              border: '1px solid rgba(0, 242, 254, 0.15)',
+              borderRadius: '18px',
+              textAlign: 'center'
+            }}>
+              <div className="chinese-char-sm" style={{
+                fontSize: '3.6rem',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '16px',
+                marginBottom: '8px'
+              }}>
+                <span>{viewingCard.characters}</span>
+                <AudioPlayer text={viewingCard.characters} style={{ width: '48px', height: '48px' }} />
+              </div>
+
+              <div style={{
+                fontSize: '1.4rem',
+                fontWeight: '700',
+                color: 'var(--neon-cyan)',
+                letterSpacing: '1px',
+                marginBottom: '8px'
+              }}>
+                {viewingCard.pinyin}
+              </div>
+
+              <div style={{
+                fontSize: '1.3rem',
+                fontWeight: '600',
+                color: '#fff'
+              }}>
+                {viewingCard.translation}
+              </div>
+            </div>
+
+            {/* Разбор ключей */}
+            {(() => {
+              const radicals = deconstructCharacter(viewingCard.characters);
+              if (radicals.length === 0) return null;
+              return (
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '14px',
+                  padding: '12px 16px',
+                  fontSize: '0.88rem'
+                }}>
+                  <span style={{ color: 'var(--neon-cyan)', fontWeight: '700', display: 'block', marginBottom: '4px' }}>
+                    🧱 Иероглифические ключи (составные части):
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                    {radicals.map((r, i) => (
+                      <span key={i} style={{ color: '#fff' }}>
+                        <strong>{r.char}</strong> — {r.name} ({r.meaning})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Примеры предложений */}
+            <div>
+              <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                💬 Примеры предложений:
+              </h4>
+              {viewingCard.examples && viewingCard.examples.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {viewingCard.examples.map((ex, idx) => (
+                    <div key={idx} style={{
+                      padding: '14px 16px',
+                      background: 'rgba(0, 242, 254, 0.04)',
+                      border: '1px solid rgba(0, 242, 254, 0.15)',
+                      borderRadius: '14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{ fontFamily: 'Noto Sans SC', color: '#fff', fontSize: '1.15rem', fontWeight: '500' }}>
+                          {ex.chinese}
+                        </div>
+                        <AudioPlayer text={ex.chinese} style={{ width: '36px', height: '36px' }} />
+                      </div>
+                      <div style={{ color: 'var(--neon-cyan)', fontSize: '0.9rem' }}>{ex.pinyin}</div>
+                      <div style={{ color: 'var(--paper-muted)', fontSize: '0.9rem' }}>{ex.translation}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic', padding: '12px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                  Для этой карточки пока нет примеров. Вы можете добавить пример через редактирование.
+                </div>
+              )}
+            </div>
+
+            {/* Панель действий */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  handleToggleFavorite(viewingCard.id);
+                  setViewingCard(prev => prev ? { ...prev, favorite: !prev.favorite } : null);
+                }}
+                className="btn-neon btn-secondary"
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                {viewingCard.favorite ? '★ В избранном' : '☆ В избранное'}
+              </button>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetCard = viewingCard;
+                    setViewingCard(null);
+                    handleOpenEditForm(targetCard);
+                  }}
+                  className="btn-neon btn-cyan"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                >
+                  <Edit size={14} /> Изменить
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetCard = viewingCard;
+                    setViewingCard(null);
+                    handleDeleteCard(targetCard.id, targetCard.characters);
+                  }}
+                  className="btn-neon btn-red"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                >
+                  <Trash size={14} /> Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Модальное окно формы карточки */}
       <Modal
