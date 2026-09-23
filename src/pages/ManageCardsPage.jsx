@@ -13,6 +13,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   const { showToast } = useToast();
   const handleBack = onBackToDashboard || onBack;
   const [module, setModule] = useState(null);
+  const [allModules, setAllModules] = useState([]);
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,6 +25,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
   // Состояния для формы (добавление / редактирование карточки)
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
+  const [targetModuleId, setTargetModuleId] = useState(moduleId);
   const [characters, setCharacters] = useState('');
   const [pinyin, setPinyin] = useState('');
   const [translation, setTranslation] = useState('');
@@ -86,6 +88,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       });
       const modulesData = await moduleRes.json();
       const modulesList = Array.isArray(modulesData) ? modulesData : [];
+      setAllModules(modulesList);
       const currentModule = modulesList.find(m => m.id === moduleId);
       setModule(currentModule || null);
 
@@ -117,6 +120,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
 
   const handleOpenCreateForm = () => {
     setEditingCardId(null);
+    setTargetModuleId(moduleId);
     setCharacters('');
     setPinyin('');
     setTranslation('');
@@ -129,6 +133,7 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
 
   const handleOpenEditForm = (card) => {
     setEditingCardId(card.id);
+    setTargetModuleId(card.module_id || moduleId);
     setCharacters(card.characters);
     setPinyin(card.pinyin);
     setTranslation(card.translation);
@@ -147,6 +152,31 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
     setIsFormOpen(true);
   };
 
+  const handleMoveCard = async (cardId, destinationModuleId) => {
+    const destMod = allModules.find(m => m.id === destinationModuleId);
+    const destTitle = destMod ? destMod.title : 'другой модуль';
+
+    try {
+      const response = await fetch(`${API_BASE}/api/cards/${cardId}/move`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ targetModuleId: destinationModuleId })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Ошибка при перемещении карточки');
+
+      const updatedCards = cards.filter(c => c.id !== cardId);
+      setCards(updatedCards);
+      cacheCardsLocally(moduleId, updatedCards);
+      showToast(`Карточка перенесена в модуль «${destTitle}» 🚚`, 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   const handleSaveCard = async (e) => {
     e.preventDefault();
     if (!characters.trim() || !translation.trim()) return;
@@ -163,7 +193,8 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
       });
     }
 
-    const endpoint = editingCardId ? `/api/cards/${editingCardId}` : `/api/modules/${moduleId}/cards`;
+    const selectedModuleId = targetModuleId || moduleId;
+    const endpoint = editingCardId ? `/api/cards/${editingCardId}` : `/api/modules/${selectedModuleId}/cards`;
     const method = editingCardId ? 'PUT' : 'POST';
 
     try {
@@ -173,14 +204,19 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ characters, pinyin, translation, examples })
+        body: JSON.stringify({ characters, pinyin, translation, examples, targetModuleId: selectedModuleId })
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Ошибка при сохранении карточки');
 
       setIsFormOpen(false);
-      showToast('Карточка успешно сохранена!', 'success');
+      if (selectedModuleId !== moduleId) {
+        const destMod = allModules.find(m => m.id === selectedModuleId);
+        showToast(`Карточка перенесена в модуль «${destMod?.title || ''}» 🚚`, 'success');
+      } else {
+        showToast('Карточка успешно сохранена!', 'success');
+      }
       loadData();
     } catch (err) {
       showToast(err.message, 'error');
@@ -475,6 +511,45 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
               )}
             </div>
 
+            {/* Быстрое перемещение карточки в другой модуль */}
+            {allModules.length > 1 && (
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '14px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}>
+                <span style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                  🚚 Переместить в другой модуль:
+                </span>
+                <select
+                  className="input-glass"
+                  style={{ padding: '6px 12px', fontSize: '0.85rem', maxWidth: '220px', background: 'rgba(20, 20, 35, 0.9)', color: '#fff', cursor: 'pointer' }}
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const targetCardId = viewingCard.id;
+                      const newModId = e.target.value;
+                      setViewingCard(null);
+                      handleMoveCard(targetCardId, newModId);
+                    }
+                  }}
+                >
+                  <option value="" disabled>Выберите модуль...</option>
+                  {allModules.filter(m => m.id !== moduleId).map(m => (
+                    <option key={m.id} value={m.id} style={{ background: '#181828', color: '#fff' }}>
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Панель действий */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between', flexWrap: 'wrap', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
               <button
@@ -529,6 +604,27 @@ export default function ManageCardsPage({ token, moduleId, onBackToDashboard, on
         className="manage-card-modal"
       >
             <form onSubmit={handleSaveCard}>
+              {allModules.length > 1 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <label htmlFor="card-target-module" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                    Модуль
+                  </label>
+                  <select 
+                    id="card-target-module"
+                    name="targetModuleId"
+                    className="input-glass"
+                    value={targetModuleId || moduleId}
+                    onChange={(e) => setTargetModuleId(e.target.value)}
+                    style={{ width: '100%', background: 'rgba(20, 20, 35, 0.9)', color: '#fff', cursor: 'pointer' }}
+                  >
+                    {allModules.map(m => (
+                      <option key={m.id} value={m.id} style={{ background: '#181828', color: '#fff' }}>
+                        {m.title} {m.id === moduleId ? '(Текущий)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ marginBottom: '14px' }}>
                 <label htmlFor="card-characters" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '6px' }}>
                   Китайские иероглифы (упрощенные)

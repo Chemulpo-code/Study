@@ -78,8 +78,8 @@ setInterval(() => { sendDueReminders().catch(error => console.error('Ошибк�
 // Эндпоинт версии приложения для отслеживания деплоя в Portainer
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '2.1.0',
-    buildHash: 'v2.1.0-card-preview-modal-audio',
+    version: '2.2.0',
+    buildHash: 'v2.2.0-move-card-between-modules',
     serverTime: new Date().toISOString()
   });
 });
@@ -533,18 +533,26 @@ app.post('/api/modules/:moduleId/cards', authenticateToken, async (req, res) => 
   res.status(201).json({ ...card, status: 'new' });
 });
 
-// Редактировать карточку
+// Редактировать карточку (с поддержкой смены модуля)
 app.put('/api/cards/:id', authenticateToken, async (req, res) => {
-  const { characters, pinyin, translation, examples, mnemonic } = req.body;
+  const { characters, pinyin, translation, examples, mnemonic, targetModuleId, moduleId } = req.body;
   const card = db.getCardById(req.params.id);
   if (!card) {
     return res.status(404).json({ error: 'Карточка не найдена.' });
   }
 
-  // Проверяем права пользователя на модуль этой карточки
+  // Проверяем права пользователя на исходный модуль этой карточки
   const module = db.getModuleById(card.moduleId);
   if (!module || module.userId !== req.user.id) {
     return res.status(403).json({ error: 'Нет доступа к карточке.' });
+  }
+
+  const newModuleId = targetModuleId || moduleId;
+  if (newModuleId && newModuleId !== card.moduleId) {
+    const targetModule = db.getModuleById(newModuleId);
+    if (!targetModule || targetModule.userId !== req.user.id) {
+      return res.status(403).json({ error: 'Нет доступа к целевому модулю.' });
+    }
   }
 
   const finalPinyin = pinyin && pinyin.trim() ? pinyin.trim() : (characters ? getPinyin(characters) : undefined);
@@ -557,8 +565,34 @@ app.put('/api/cards/:id', authenticateToken, async (req, res) => {
     }
   }
 
-  const updatedCard = db.updateCard(req.params.id, characters, finalPinyin, translation, finalExamples, mnemonic);
+  const updatedCard = db.updateCard(req.params.id, characters, finalPinyin, translation, finalExamples, mnemonic, newModuleId);
   res.json(updatedCard);
+});
+
+// Переместить карточку в другой модуль
+app.post('/api/cards/:id/move', authenticateToken, (req, res) => {
+  const { targetModuleId } = req.body;
+  if (!targetModuleId) {
+    return res.status(400).json({ error: 'Укажите targetModuleId.' });
+  }
+
+  const card = db.getCardById(req.params.id);
+  if (!card) {
+    return res.status(404).json({ error: 'Карточка не найдена.' });
+  }
+
+  const sourceModule = db.getModuleById(card.moduleId);
+  if (!sourceModule || sourceModule.userId !== req.user.id) {
+    return res.status(403).json({ error: 'Нет доступа к карточке.' });
+  }
+
+  const targetModule = db.getModuleById(targetModuleId);
+  if (!targetModule || targetModule.userId !== req.user.id) {
+    return res.status(403).json({ error: 'Нет доступа к целевому модулю.' });
+  }
+
+  const movedCard = db.moveCard(req.params.id, targetModuleId);
+  res.json(movedCard);
 });
 
 // Удалить карточку

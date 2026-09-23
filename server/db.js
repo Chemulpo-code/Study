@@ -334,7 +334,7 @@ const db = {
     return card;
   },
 
-  updateCard(id, characters, pinyin, translation, examples, mnemonic) {
+  updateCard(id, characters, pinyin, translation, examples, mnemonic, targetModuleId) {
     const cardIndex = dataCache.cards.findIndex(c => c.id === id);
     if (cardIndex === -1) return null;
 
@@ -344,8 +344,18 @@ const db = {
       pinyin: pinyin !== undefined ? pinyin : dataCache.cards[cardIndex].pinyin,
       translation: translation !== undefined ? translation : dataCache.cards[cardIndex].translation,
       examples: examples !== undefined ? examples : dataCache.cards[cardIndex].examples,
-      mnemonic: mnemonic !== undefined ? mnemonic : dataCache.cards[cardIndex].mnemonic
+      mnemonic: mnemonic !== undefined ? mnemonic : dataCache.cards[cardIndex].mnemonic,
+      moduleId: targetModuleId !== undefined ? targetModuleId : dataCache.cards[cardIndex].moduleId
     };
+    saveDb();
+    return dataCache.cards[cardIndex];
+  },
+
+  moveCard(id, targetModuleId) {
+    const cardIndex = dataCache.cards.findIndex(c => c.id === id);
+    if (cardIndex === -1) return null;
+
+    dataCache.cards[cardIndex].moduleId = targetModuleId;
     saveDb();
     return dataCache.cards[cardIndex];
   },
