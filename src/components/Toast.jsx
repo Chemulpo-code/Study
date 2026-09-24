@@ -26,18 +26,7 @@ export function ToastProvider({ children }) {
       {children}
       
       {/* Контейнер уведомлений Toast */}
-      <div style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        zIndex: 99999,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        maxWidth: '90vw',
-        width: '380px',
-        pointerEvents: 'none'
-      }} aria-live="polite" aria-atomic="false">
+      <div className="toast-container" aria-live="polite" aria-atomic="false">
         {toasts.map(toast => {
           let bg = 'rgba(17, 25, 40, 0.9)';
           let border = '1px solid var(--neon-cyan)';
