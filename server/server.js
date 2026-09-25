@@ -937,6 +937,10 @@ if (fs.existsSync(distPath)) {
 
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) return next();
+    // Не отдаем index.html для несуществующих статических файлов (/assets/*.js, .css, .png и т.д.)
+    if (req.path.startsWith('/assets/') || /\.(js|css|png|jpg|jpeg|gif|ico|svg|json|woff2?)$/i.test(req.path)) {
+      return res.status(404).send('Asset not found');
+    }
     res.setHeader('Cache-Control', getStaticCachePolicy('/index.html'));
     res.sendFile(path.join(distPath, 'index.html'));
   });

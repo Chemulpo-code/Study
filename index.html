@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" style="background-color: #0b0f19;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -19,26 +19,60 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Китайский" />
     <meta name="theme-color" content="#0b0f19" />
+    <style>
+      @keyframes appSpin { to { transform: rotate(360deg); } }
+      html, body { background-color: #0b0f19; color: #f0e7d8; margin: 0; padding: 0; min-height: 100vh; width: 100%; }
+    </style>
   </head>
-  <body style="background-color: #0b0f19;">
-    <div id="root"></div>
+  <body style="background-color: #0b0f19; color: #f0e7d8;">
+    <div id="root">
+      <div style="min-height: 100vh; background-color: #0b0f19; color: #f0e7d8; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 20px;">
+        <div style="width: 36px; height: 36px; border: 3px solid rgba(0, 242, 254, 0.15); border-top-color: #00f2fe; border-radius: 50%; animation: appSpin 0.8s linear infinite; margin-bottom: 16px;"></div>
+        <div style="font-size: 1rem; font-weight: 600; color: #fff; letter-spacing: 0.5px;">Загрузка приложения…</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Блокировка жесткого жеста зума пальцами (pinch-to-zoom) на iOS Safari / PWA
-      document.addEventListener('gesturestart', function (e) {
-        e.preventDefault();
-      });
-      document.addEventListener('gesturechange', function (e) {
-        e.preventDefault();
-      });
-      document.addEventListener('gestureend', function (e) {
-        e.preventDefault();
-      });
+      // Блокировка жеста зума пальцами (pinch-to-zoom) на iOS Safari / PWA
+      document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+      document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+      document.addEventListener('gestureend', function (e) { e.preventDefault(); });
       document.addEventListener('touchstart', function (e) {
-        if (e.touches.length > 1) {
-          e.preventDefault();
-        }
+        if (e.touches.length > 1) { e.preventDefault(); }
       }, { passive: false });
+
+      // Автоматическое восстановление при устаревшем кэше PWA или сбое бандлов
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const root = document.getElementById('root');
+          if (root && root.querySelector('[style*="appSpin"]')) {
+            console.warn('Приложение не смогло смонтироваться (устаревший кэш PWA). Запускаем авто-восстановление...');
+            if (!sessionStorage.getItem('pwa_auto_refreshed')) {
+              sessionStorage.setItem('pwa_auto_refreshed', '1');
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                  Promise.all(regs.map(r => r.unregister())).then(() => {
+                    window.location.reload(true);
+                  });
+                });
+              } else {
+                window.location.reload(true);
+              }
+            } else {
+              root.innerHTML = `
+                <div style="min-height: 100vh; background-color: #0b0f19; color: #f0e7d8; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 24px;">
+                  <div style="font-size: 3rem; margin-bottom: 12px;">📱</div>
+                  <h3 style="margin: 0 0 8px 0; color: #fff; font-size: 1.3rem;">Обновление приложения</h3>
+                  <p style="color: #a7afba; font-size: 0.9rem; max-width: 320px; margin: 0 0 20px 0; line-height: 1.5;">Доступна новая версия приложения. Нажмите кнопку ниже для перезагрузки.</p>
+                  <button onclick="sessionStorage.removeItem('pwa_auto_refreshed'); if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.unregister()))).then(() => location.reload(true)); } else { location.reload(true); }" style="background: linear-gradient(135deg, #00f2fe, #4facfe); border: none; color: #04070a; font-weight: 700; padding: 12px 24px; border-radius: 12px; font-size: 0.95rem; cursor: pointer;">Обновить сейчас</button>
+                </div>
+              `;
+            }
+          } else {
+            sessionStorage.removeItem('pwa_auto_refreshed');
+          }
+        }, 4000);
+      });
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
